@@ -1,14 +1,14 @@
 {
   "domain": "charging_coordinator",
   "name": "Charging Coordinator",
-  "codeowners": [],
+  "codeowners": ["@KarstenBade"],
   "config_flow": true,
   "after_dependencies": ["frontend"],
   "dependencies": ["http", "mqtt"],
-  "documentation": "https://github.com/fiedel/ha-charging-coordinator",
+  "documentation": "https://github.com/KarstenBade/ha-charging-coordinator",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/fiedel/ha-charging-coordinator/issues",
+  "issue_tracker": "https://github.com/KarstenBade/ha-charging-coordinator/issues",
   "requirements": ["pymodbus>=3.10"],
   "version": "0.1.0"
 }
