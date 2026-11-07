@@ -1,0 +1,85 @@
+# Example dashboard for the Charging Coordinator.
+# Paste into a dashboard via "Edit dashboard" -> "Raw configuration editor".
+title: Charging
+views:
+  - title: Charging
+    path: charging
+    cards:
+      - type: custom:charging-coordinator-card
+
+      - type: entities
+        title: Control
+        entities:
+          - switch.charging_coordinator_active_control
+          - select.charging_coordinator_charge_mode
+          - select.charging_coordinator_phase_mode
+          - number.charging_coordinator_price_threshold
+          - number.charging_coordinator_grid_charge_max_power
+          - switch.charging_coordinator_block_battery_on_ev_grid_charge
+          - switch.charging_coordinator_block_battery_on_cheap_price
+
+      - type: glance
+        title: Decision
+        columns: 4
+        entities:
+          - entity: binary_sensor.charging_coordinator_target_enabled
+            name: Enabled
+          - entity: sensor.charging_coordinator_target_current
+            name: Current
+          - entity: sensor.charging_coordinator_target_phases
+            name: Phases
+          - entity: sensor.charging_coordinator_battery_mode_target
+            name: Battery
+          - entity: sensor.charging_coordinator_site_power
+            name: Site power
+          - entity: sensor.charging_coordinator_price
+            name: Price
+          - entity: sensor.charging_coordinator_fuse_headroom
+            name: Fuse
+          - entity: sensor.charging_coordinator_unbalance
+            name: Unbalance
+
+      - type: history-graph
+        title: Power
+        hours_to_show: 12
+        entities:
+          - entity: sensor.charging_coordinator_grid_power
+            name: Grid
+          - entity: sensor.charging_coordinator_charger_power
+            name: Vehicle
+          - entity: sensor.charging_coordinator_battery_power
+            name: Battery
+          - entity: sensor.charging_coordinator_pv_dc_power
+            name: PV hybrid
+
+      - type: entities
+        title: Battery priority
+        entities:
+          - number.charging_coordinator_priority_soc
+          - number.charging_coordinator_buffer_soc
+          - number.charging_coordinator_buffer_start_soc
+          - number.charging_coordinator_residual_power
+
+      - type: entities
+        title: PV and phase switching
+        entities:
+          - number.charging_coordinator_min_current
+          - number.charging_coordinator_max_current_1p
+          - number.charging_coordinator_max_current_3p
+          - number.charging_coordinator_phase_switch_up_power
+          - number.charging_coordinator_phase_switch_down_power
+          - number.charging_coordinator_enable_threshold
+          - number.charging_coordinator_disable_threshold
+          - number.charging_coordinator_enable_delay
+          - number.charging_coordinator_disable_delay
+
+      - type: entities
+        title: Grid protection
+        entities:
+          - select.charging_coordinator_unbalance_mode
+          - number.charging_coordinator_unbalance_max
+          - number.charging_coordinator_main_fuse_current
+          - sensor.charging_coordinator_limit_current
+          - sensor.charging_coordinator_grid_current_l1
+          - sensor.charging_coordinator_grid_current_l2
+          - sensor.charging_coordinator_grid_current_l3

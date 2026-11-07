@@ -1,0 +1,306 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Charging Coordinator",
+        "data": {
+          "hybrid_host": "Hybrid inverter host",
+          "hybrid_port": "Hybrid inverter Modbus port",
+          "hybrid_unit_id": "Hybrid inverter Modbus unit ID",
+          "pv_inverter_host": "PV inverter host (optional)",
+          "shm2_serial": "Sunny Home Manager serial number",
+          "shm2_interface": "Multicast interface IP (optional)",
+          "goe_topic": "go-eCharger MQTT topic prefix",
+          "price_entity": "Electricity price sensor",
+          "charger_grid_phase": "Grid phase of charger L1",
+          "battery_max_charge_power": "Battery max charge power",
+          "battery_max_discharge_power": "Battery max discharge power",
+          "control_interval": "Control interval"
+        },
+        "data_description": {
+          "hybrid_host": "IP or hostname of the SMA STP SE (Modbus TCP must be enabled).",
+          "hybrid_unit_id": "SMA devices use unit ID 3.",
+          "pv_inverter_host": "IP or hostname of an additional SMA PV inverter (e.g. Sunny Boy) for display.",
+          "shm2_serial": "Only datagrams from this meter are used. Leave empty to accept any meter.",
+          "shm2_interface": "IP of the local network interface that receives the Speedwire multicast.",
+          "goe_topic": "For example go-eCharger/123456 (without trailing slash).",
+          "price_entity": "Sensor with the current grid price, in the same unit as the price threshold.",
+          "charger_grid_phase": "Grid phase the charger uses when charging single-phase.",
+          "battery_max_charge_power": "Written to the inverter as maximum charge power.",
+          "battery_max_discharge_power": "Written to the inverter as maximum discharge power in normal mode."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot read from the inverter via Modbus TCP.",
+      "invalid_serial": "The serial number must be numeric.",
+      "invalid_topic": "The topic must include the charger serial number, e.g. go-eCharger/123456."
+    },
+    "abort": {
+      "already_configured": "The Charging Coordinator is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Charging Coordinator options",
+        "data": {
+          "hybrid_host": "Hybrid inverter host",
+          "hybrid_port": "Hybrid inverter Modbus port",
+          "hybrid_unit_id": "Hybrid inverter Modbus unit ID",
+          "pv_inverter_host": "PV inverter host (optional)",
+          "shm2_serial": "Sunny Home Manager serial number",
+          "shm2_interface": "Multicast interface IP (optional)",
+          "goe_topic": "go-eCharger MQTT topic prefix",
+          "price_entity": "Electricity price sensor",
+          "charger_grid_phase": "Grid phase of charger L1",
+          "battery_max_charge_power": "Battery max charge power",
+          "battery_max_discharge_power": "Battery max discharge power",
+          "control_interval": "Control interval"
+        },
+        "data_description": {
+          "hybrid_host": "IP or hostname of the SMA STP SE (Modbus TCP must be enabled).",
+          "hybrid_unit_id": "SMA devices use unit ID 3.",
+          "pv_inverter_host": "IP or hostname of an additional SMA PV inverter (e.g. Sunny Boy) for display.",
+          "shm2_serial": "Only datagrams from this meter are used. Leave empty to accept any meter.",
+          "shm2_interface": "IP of the local network interface that receives the Speedwire multicast.",
+          "goe_topic": "For example go-eCharger/123456 (without trailing slash).",
+          "price_entity": "Sensor with the current grid price, in the same unit as the price threshold.",
+          "charger_grid_phase": "Grid phase the charger uses when charging single-phase.",
+          "battery_max_charge_power": "Written to the inverter as maximum charge power.",
+          "battery_max_discharge_power": "Written to the inverter as maximum discharge power in normal mode."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot read from the inverter via Modbus TCP.",
+      "invalid_serial": "The serial number must be numeric.",
+      "invalid_topic": "The topic must include the charger serial number, e.g. go-eCharger/123456."
+    }
+  },
+  "selector": {
+    "charger_grid_phase": {
+      "options": {
+        "1": "L1",
+        "2": "L2",
+        "3": "L3"
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "charge_mode": {
+        "name": "Charge mode",
+        "state": {
+          "off": "Off",
+          "pv": "PV",
+          "pv_grid": "PV + grid",
+          "now": "Now"
+        }
+      },
+      "phase_mode": {
+        "name": "Phase mode",
+        "state": {
+          "auto": "Auto",
+          "1p": "1-phase",
+          "3p": "3-phase"
+        }
+      },
+      "unbalance_mode": {
+        "name": "Unbalanced load protection",
+        "state": {
+          "dynamic": "Dynamic",
+          "static": "Static",
+          "off": "Off"
+        }
+      }
+    },
+    "switch": {
+      "active_control": {
+        "name": "Active control"
+      },
+      "block_battery_on_ev_grid_charge": {
+        "name": "Block battery on EV grid charging"
+      },
+      "block_battery_on_cheap_price": {
+        "name": "Block battery on cheap price"
+      }
+    },
+    "number": {
+      "price_threshold": {
+        "name": "Price threshold"
+      },
+      "grid_charge_max_power": {
+        "name": "Grid charge max power"
+      },
+      "min_current": {
+        "name": "Min current"
+      },
+      "max_current_1p": {
+        "name": "Max current 1-phase"
+      },
+      "max_current_3p": {
+        "name": "Max current 3-phase"
+      },
+      "phase_switch_up_power": {
+        "name": "Phase switch up power"
+      },
+      "phase_switch_down_power": {
+        "name": "Phase switch down power"
+      },
+      "enable_threshold": {
+        "name": "Enable threshold"
+      },
+      "disable_threshold": {
+        "name": "Disable threshold"
+      },
+      "enable_delay": {
+        "name": "Enable delay"
+      },
+      "disable_delay": {
+        "name": "Disable delay"
+      },
+      "residual_power": {
+        "name": "Residual power"
+      },
+      "priority_soc": {
+        "name": "Battery priority SoC"
+      },
+      "buffer_soc": {
+        "name": "Battery buffer SoC"
+      },
+      "buffer_start_soc": {
+        "name": "Battery buffer start SoC"
+      },
+      "main_fuse_current": {
+        "name": "Main fuse current"
+      },
+      "unbalance_max": {
+        "name": "Max unbalanced load"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "target_current": {
+        "name": "Target current"
+      },
+      "target_phases": {
+        "name": "Target phases"
+      },
+      "site_power": {
+        "name": "Site power"
+      },
+      "pv_timer_remaining": {
+        "name": "PV timer remaining"
+      },
+      "phase_timer_remaining": {
+        "name": "Phase timer remaining"
+      },
+      "limit_current": {
+        "name": "Limit current"
+      },
+      "fuse_headroom": {
+        "name": "Main fuse headroom"
+      },
+      "unbalance": {
+        "name": "Unbalanced load"
+      },
+      "price": {
+        "name": "Price"
+      },
+      "charger_power": {
+        "name": "Charger power"
+      },
+      "charger_session_energy": {
+        "name": "Charger session energy"
+      },
+      "grid_power": {
+        "name": "Grid power"
+      },
+      "grid_power_l1": {
+        "name": "Grid power L1"
+      },
+      "grid_power_l2": {
+        "name": "Grid power L2"
+      },
+      "grid_power_l3": {
+        "name": "Grid power L3"
+      },
+      "grid_current_l1": {
+        "name": "Grid current L1"
+      },
+      "grid_current_l2": {
+        "name": "Grid current L2"
+      },
+      "grid_current_l3": {
+        "name": "Grid current L3"
+      },
+      "grid_voltage_l1": {
+        "name": "Grid voltage L1"
+      },
+      "grid_voltage_l2": {
+        "name": "Grid voltage L2"
+      },
+      "grid_voltage_l3": {
+        "name": "Grid voltage L3"
+      },
+      "grid_energy_import": {
+        "name": "Grid energy import"
+      },
+      "grid_energy_export": {
+        "name": "Grid energy export"
+      },
+      "pv_dc_power": {
+        "name": "Hybrid PV power"
+      },
+      "battery_power": {
+        "name": "Battery power"
+      },
+      "battery_soc": {
+        "name": "Battery SoC"
+      },
+      "battery_charge_energy": {
+        "name": "Battery charge energy"
+      },
+      "battery_discharge_energy": {
+        "name": "Battery discharge energy"
+      },
+      "pv_inverter_power": {
+        "name": "PV inverter power"
+      },
+      "pv_inverter_energy": {
+        "name": "PV inverter energy"
+      },
+      "battery_mode_target": {
+        "name": "Battery mode target",
+        "state": {
+          "normal": "Normal",
+          "hold": "Hold"
+        }
+      },
+      "battery_mode_applied": {
+        "name": "Battery mode applied",
+        "state": {
+          "normal": "Normal",
+          "hold": "Hold"
+        }
+      }
+    },
+    "binary_sensor": {
+      "target_enabled": {
+        "name": "Target enabled"
+      },
+      "price_cheap": {
+        "name": "Price cheap"
+      },
+      "battery_hold": {
+        "name": "Battery hold"
+      },
+      "vehicle_connected": {
+        "name": "Vehicle connected"
+      }
+    }
+  }
+}
