@@ -1,9 +1,9 @@
 {
   "domain": "charging_coordinator",
   "name": "Charging Coordinator",
+  "after_dependencies": ["frontend"],
   "codeowners": ["@KarstenBade"],
   "config_flow": true,
-  "after_dependencies": ["frontend"],
   "dependencies": ["http", "mqtt"],
   "documentation": "https://github.com/KarstenBade/ha-charging-coordinator",
   "integration_type": "hub",
