@@ -349,15 +349,18 @@ class Controller:
         enabled = pv.enabled
         current = min(pv.current, max_current(s, decision.phases))
         status = pv.status
+        limited = False
 
         if enabled and limit.current < current:
             current = limit.current
+            limited = True
             status = f"{status}, limited by {limit.reason}"
 
         if enabled:
             threshold = s.min_current + (LIMIT_HYSTERESIS if self._limit_blocked else 0.0)
             if limit.current < threshold:
                 enabled = False
+                limited = True
                 self._limit_blocked = True
                 status = f"{pv.status}, blocked by {limit.reason}"
             else:
@@ -372,6 +375,7 @@ class Controller:
             status=status,
             limit_current=None if math.isinf(limit.current) else limit.current,
             limit_reason=limit.reason,
+            limited=limited,
             fuse_headroom=limit.fuse_headroom,
             unbalance=limit.unbalance,
         )

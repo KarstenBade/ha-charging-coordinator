@@ -16,6 +16,16 @@ history:
 logbook:
 system_health:
 
+# The example dashboard, read straight from the repo (changes show after a reload)
+lovelace:
+  dashboards:
+    charging-example:
+      mode: yaml
+      filename: dashboard-example.yaml  # symlink created by scripts/dev-setup.sh
+      title: Charging (example)
+      icon: mdi:ev-station
+      show_in_sidebar: true
+
 logger:
   default: warning
   logs:

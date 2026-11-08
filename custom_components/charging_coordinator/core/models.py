@@ -132,7 +132,8 @@ class Decision:
     pv_remaining: float = 0.0
     phase_action: str = "inactive"  # scale1p / scale3p / inactive
     phase_remaining: float = 0.0
-    limit_current: float | None = None
+    limit_current: float | None = None  # tightest protection limit, even if not reached
     limit_reason: str | None = None
+    limited: bool = False  # the limit reduced or blocked charging in this decision
     fuse_headroom: float | None = None
     unbalance: float | None = None

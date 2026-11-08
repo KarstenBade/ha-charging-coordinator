@@ -30,6 +30,7 @@ VIRTUAL_ENV=.venv-dev "$UV" pip install "homeassistant==$HA_VERSION" "pymodbus>=
 mkdir -p dev-config/custom_components
 ln -sfn ../../custom_components/charging_coordinator \
   dev-config/custom_components/charging_coordinator
+ln -sfn ../examples/dashboard.yaml dev-config/dashboard-example.yaml
 
 echo
 echo "Home Assistant $HA_VERSION is ready. Start it with scripts/dev-run.sh"

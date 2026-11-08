@@ -444,3 +444,16 @@ def test_site_power_published_without_vehicle(ctl: Controller) -> None:
     assert d.status == "disconnected" and d.site_power == 800
     assert ctl.decide(m, replace(PV, charge_mode=ChargeMode.OFF), 10).site_power == 800
     assert ctl.decide(meas(500, ChargerState(available=False)), PV, 20).site_power == 500
+
+
+def test_limited_only_when_limit_reduces_current(ctl: Controller) -> None:
+    s = replace(PV, charge_mode=ChargeMode.NOW)
+    ctl._last_mode = ChargeMode.NOW
+    ch = charger(ChargerStatus.CHARGING, enabled=True, current=16, phases=3)
+    # plenty of fuse headroom: the fuse is the tightest limit, but not reached
+    d = ctl.decide(meas(11000, ch, grid_phase_current=(16, 16, 16)), s, 0)
+    assert d.current == 16 and d.limit_reason is not None and not d.limited
+    d = ctl.decide(meas(20000, ch, grid_phase_current=(30, 55, 30)), s, 10)
+    assert d.current == 11 and d.limited
+    d = ctl.decide(meas(20000, ch, grid_phase_current=(30, 62, 30)), s, 20)
+    assert not d.enabled and d.limited

@@ -134,7 +134,7 @@ scripts/dev-run.sh              # http://localhost:8123
 
 In VS Code, start **Home Assistant (dev)** from *Run and Debug* to get breakpoints anywhere, including HA itself (`justMyCode` is off). **Home Assistant (dev, asyncio debug)** adds HA's `--debug` mode, which reports blocking calls in the event loop. After a code change, restart HA; the symlink means no copying. A restart from the HA UI makes HA exit with code 100. `scripts/dev-run.sh` starts it again; a VS Code debug session ends instead, so start it again with F5.
 
-Only `dev-config/configuration.yaml` is tracked. It loads a small subset of `default_config`, enables debug logging for the integration, and adds a price slider (`input_number.dev_electricity_price` → `sensor.dev_electricity_price`). Drag the slider across `price_threshold` to test `pv_grid` and the battery hold.
+Only `dev-config/configuration.yaml` is tracked. It loads a small subset of `default_config`, enables debug logging for the integration, and adds a price slider (`input_number.dev_electricity_price` → `sensor.dev_electricity_price`). Drag the slider across `price_threshold` to test `pv_grid` and the battery hold. The sidebar entry *Charging (example)* shows [examples/dashboard.yaml](examples/dashboard.yaml) straight from the repo (through a symlink), so edits there show after a browser reload.
 
 Connecting to the hardware:
 

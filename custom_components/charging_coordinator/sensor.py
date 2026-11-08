@@ -68,6 +68,7 @@ def _status_attrs(rt: CoordinatorRuntime) -> dict[str, Any]:
             "pv_action": d.pv_action,
             "phase_action": d.phase_action,
             "limit_reason": d.limit_reason,
+            "limited": d.limited,
             "battery_reason": d.battery_reason,
         }
     return attrs
@@ -136,7 +137,10 @@ SENSORS: tuple[CoordinatorSensorDescription, ...] = (
         value_fn=_decision("current"),
     ),
     CoordinatorSensorDescription(
-        key="target_phases", value_fn=_decision("phases"), icon="mdi:sine-wave"
+        key="target_phases",
+        state_class=SensorStateClass.MEASUREMENT,  # numeric, so graphs draw a line
+        value_fn=_decision("phases"),
+        icon="mdi:sine-wave",
     ),
     _power("site_power", _decision("site_power")),
     CoordinatorSensorDescription(
@@ -183,7 +187,12 @@ SENSORS: tuple[CoordinatorSensorDescription, ...] = (
     ),
     _power("unbalance", _decision("unbalance"), diag=True),
     CoordinatorSensorDescription(
-        key="price", value_fn=lambda rt: rt.measurements.price, icon="mdi:currency-eur"
+        key="price",
+        # no unit: it is the same as price_threshold's, which is whatever the source uses
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=3,
+        value_fn=lambda rt: rt.measurements.price,
+        icon="mdi:currency-eur",
     ),
     _power("charger_power", lambda rt: rt.measurements.charger.power),
     _energy("charger_session_energy", lambda rt: rt.goe.data.session_energy),

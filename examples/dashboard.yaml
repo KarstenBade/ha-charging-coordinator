@@ -1,85 +1,460 @@
-# Example dashboard for the Charging Coordinator.
-# Paste into a dashboard via "Edit dashboard" -> "Raw configuration editor".
+# Charging Coordinator dashboard.
+#
+# Use it as a whole dashboard: Settings -> Dashboards -> Add dashboard ->
+# "New dashboard from scratch", open it, then pencil -> three dots ->
+# "Raw configuration editor", replace everything with this file and save.
+#
+# The custom card is registered automatically by the integration; no resource
+# needs to be added. Only entities of the integration are used, so it works
+# unchanged on every instance (entity IDs are fixed: <domain>.charging_coordinator_<key>).
 title: Charging
 views:
-  - title: Charging
-    path: charging
-    cards:
-      - type: custom:charging-coordinator-card
+  # --- Overview: card, control and the current decision ------------------
+  - title: Overview
+    path: overview
+    icon: mdi:ev-station
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Coordinator
+          - type: custom:charging-coordinator-card
+            grid_options:
+              columns: full
 
-      - type: entities
-        title: Control
-        entities:
-          - switch.charging_coordinator_active_control
-          - select.charging_coordinator_charge_mode
-          - select.charging_coordinator_phase_mode
-          - number.charging_coordinator_price_threshold
-          - number.charging_coordinator_grid_charge_max_power
-          - switch.charging_coordinator_block_battery_on_ev_grid_charge
-          - switch.charging_coordinator_block_battery_on_cheap_price
-
-      - type: glance
-        title: Decision
-        columns: 4
-        entities:
-          - entity: binary_sensor.charging_coordinator_target_enabled
-            name: Enabled
-          - entity: sensor.charging_coordinator_target_current
-            name: Current
-          - entity: sensor.charging_coordinator_target_phases
+      - type: grid
+        cards:
+          - type: heading
+            heading: Control
+          - type: tile
+            entity: switch.charging_coordinator_active_control
+            name: Active control (off = shadow mode)
+            grid_options:
+              columns: full
+          - type: tile
+            entity: select.charging_coordinator_charge_mode
+            name: Charge mode
+            features_position: bottom
+            features:
+              - type: select-options
+            grid_options:
+              columns: full
+          - type: tile
+            entity: select.charging_coordinator_phase_mode
             name: Phases
-          - entity: sensor.charging_coordinator_battery_mode_target
-            name: Battery
-          - entity: sensor.charging_coordinator_site_power
-            name: Site power
-          - entity: sensor.charging_coordinator_price
-            name: Price
-          - entity: sensor.charging_coordinator_fuse_headroom
-            name: Fuse
-          - entity: sensor.charging_coordinator_unbalance
-            name: Unbalance
+            features_position: bottom
+            features:
+              - type: select-options
+            grid_options:
+              columns: full
+          - type: tile
+            entity: number.charging_coordinator_price_threshold
+            name: Price threshold
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: number.charging_coordinator_grid_charge_max_power
+            name: Max grid power
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: switch.charging_coordinator_block_battery_on_ev_grid_charge
+            name: Hold battery on EV grid charge
+          - type: tile
+            entity: switch.charging_coordinator_block_battery_on_cheap_price
+            name: Hold battery on cheap price
 
-      - type: history-graph
-        title: Power
-        hours_to_show: 12
-        entities:
-          - entity: sensor.charging_coordinator_grid_power
-            name: Grid
-          - entity: sensor.charging_coordinator_charger_power
+      - type: grid
+        cards:
+          - type: heading
+            heading: Decision
+          - type: tile
+            entity: sensor.charging_coordinator_status
+            name: Status
+            vertical: false
+            grid_options:
+              columns: full
+          - type: tile
+            entity: binary_sensor.charging_coordinator_vehicle_connected
             name: Vehicle
-          - entity: sensor.charging_coordinator_battery_power
-            name: Battery
-          - entity: sensor.charging_coordinator_pv_dc_power
-            name: PV hybrid
+          - type: tile
+            entity: binary_sensor.charging_coordinator_target_enabled
+            name: Charging
+          - type: tile
+            entity: sensor.charging_coordinator_target_current
+            name: Current
+          - type: tile
+            entity: sensor.charging_coordinator_target_phases
+            name: Phases
+          - type: tile
+            entity: sensor.charging_coordinator_site_power
+            name: Site power
+          - type: tile
+            entity: sensor.charging_coordinator_charger_power
+            name: Vehicle power
+          - type: tile
+            entity: sensor.charging_coordinator_price
+            name: Price
+          - type: tile
+            entity: binary_sensor.charging_coordinator_price_cheap
+            name: Price cheap
+          - type: tile
+            entity: sensor.charging_coordinator_battery_mode_target
+            name: Battery target
+          - type: tile
+            entity: sensor.charging_coordinator_battery_mode_applied
+            name: Battery applied
+          - type: tile
+            entity: sensor.charging_coordinator_pv_timer_remaining
+            name: PV timer
+          - type: tile
+            entity: sensor.charging_coordinator_phase_timer_remaining
+            name: Phase timer
 
-      - type: entities
-        title: Battery priority
-        entities:
-          - number.charging_coordinator_priority_soc
-          - number.charging_coordinator_buffer_soc
-          - number.charging_coordinator_buffer_start_soc
-          - number.charging_coordinator_residual_power
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Last 3 hours
+          - type: history-graph
+            hours_to_show: 3
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_grid_power
+                name: Grid
+              - entity: sensor.charging_coordinator_site_power
+                name: Site power
+              - entity: sensor.charging_coordinator_charger_power
+                name: Vehicle
+              - entity: sensor.charging_coordinator_battery_power
+                name: Battery
+              - entity: sensor.charging_coordinator_pv_dc_power
+                name: PV hybrid (DC)
+              - entity: sensor.charging_coordinator_pv_inverter_power
+                name: PV Sunny Boy
 
-      - type: entities
-        title: PV and phase switching
-        entities:
-          - number.charging_coordinator_min_current
-          - number.charging_coordinator_max_current_1p
-          - number.charging_coordinator_max_current_3p
-          - number.charging_coordinator_phase_switch_up_power
-          - number.charging_coordinator_phase_switch_down_power
-          - number.charging_coordinator_enable_threshold
-          - number.charging_coordinator_disable_threshold
-          - number.charging_coordinator_enable_delay
-          - number.charging_coordinator_disable_delay
+  # --- Graphs: compare the decisions with what happened -------------------
+  - title: Graphs
+    path: graphs
+    icon: mdi:chart-line
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Power (24 h)
+          - type: history-graph
+            hours_to_show: 24
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_grid_power
+                name: Grid (+ import)
+              - entity: sensor.charging_coordinator_site_power
+                name: Site power (- surplus)
+              - entity: sensor.charging_coordinator_charger_power
+                name: Vehicle
+              - entity: sensor.charging_coordinator_battery_power
+                name: Battery (+ discharge)
+              - entity: sensor.charging_coordinator_pv_dc_power
+                name: PV hybrid (DC)
+              - entity: sensor.charging_coordinator_pv_inverter_power
+                name: PV Sunny Boy
 
-      - type: entities
-        title: Grid protection
-        entities:
-          - select.charging_coordinator_unbalance_mode
-          - number.charging_coordinator_unbalance_max
-          - number.charging_coordinator_main_fuse_current
-          - sensor.charging_coordinator_limit_current
-          - sensor.charging_coordinator_grid_current_l1
-          - sensor.charging_coordinator_grid_current_l2
-          - sensor.charging_coordinator_grid_current_l3
+      - type: grid
+        cards:
+          - type: heading
+            heading: Charging decision (12 h)
+          - type: history-graph
+            hours_to_show: 12
+            grid_options:
+              columns: full
+            entities:
+              - entity: binary_sensor.charging_coordinator_vehicle_connected
+                name: Vehicle connected
+              - entity: binary_sensor.charging_coordinator_target_enabled
+                name: Charging
+              - entity: select.charging_coordinator_charge_mode
+                name: Mode
+              - entity: sensor.charging_coordinator_target_current
+                name: Target current
+              - entity: sensor.charging_coordinator_limit_current
+                name: Limit (fuse / unbalance)
+              - entity: sensor.charging_coordinator_target_phases
+                name: Phases
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Price and battery (24 h)
+          - type: history-graph
+            hours_to_show: 24
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_price
+                name: Price
+              - entity: number.charging_coordinator_price_threshold
+                name: Threshold
+              - entity: binary_sensor.charging_coordinator_price_cheap
+                name: Cheap
+              - entity: binary_sensor.charging_coordinator_battery_hold
+                name: Battery hold
+              - entity: sensor.charging_coordinator_battery_soc
+                name: Battery SoC
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Grid phases (12 h)
+          - type: history-graph
+            hours_to_show: 12
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_grid_current_l1
+                name: L1
+              - entity: sensor.charging_coordinator_grid_current_l2
+                name: L2
+              - entity: sensor.charging_coordinator_grid_current_l3
+                name: L3
+              - entity: sensor.charging_coordinator_fuse_headroom
+                name: Fuse headroom
+              - entity: sensor.charging_coordinator_unbalance
+                name: Unbalance
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Energy per day (14 days)
+          - type: statistics-graph
+            chart_type: bar
+            period: day
+            days_to_show: 14
+            stat_types:
+              - change
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_grid_energy_import
+                name: Grid import
+              - entity: sensor.charging_coordinator_grid_energy_export
+                name: Grid export
+              - entity: sensor.charging_coordinator_pv_inverter_energy
+                name: Sunny Boy yield
+              - entity: sensor.charging_coordinator_battery_charge_energy
+                name: Battery charge
+              - entity: sensor.charging_coordinator_battery_discharge_energy
+                name: Battery discharge
+
+  # --- Settings: all parameters --------------------------------------------
+  - title: Settings
+    path: settings
+    icon: mdi:tune
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: entities
+            title: Price and grid charging
+            show_header_toggle: false  # would switch both battery hold switches at once
+            grid_options:
+              columns: full
+            entities:
+              - entity: number.charging_coordinator_price_threshold
+                name: Price threshold
+              - entity: number.charging_coordinator_grid_charge_max_power
+                name: Max grid power (pv_grid)
+              - entity: switch.charging_coordinator_block_battery_on_ev_grid_charge
+                name: Hold battery on EV grid charge
+              - entity: switch.charging_coordinator_block_battery_on_cheap_price
+                name: Hold battery on cheap price
+          - type: entities
+            title: Battery priority
+            grid_options:
+              columns: full
+            entities:
+              - entity: number.charging_coordinator_priority_soc
+                name: Priority SoC
+              - entity: number.charging_coordinator_buffer_soc
+                name: Buffer SoC
+              - entity: number.charging_coordinator_buffer_start_soc
+                name: Buffer start SoC
+              - entity: number.charging_coordinator_residual_power
+                name: Residual power
+
+      - type: grid
+        cards:
+          - type: entities
+            title: Current and phases
+            grid_options:
+              columns: full
+            entities:
+              - entity: select.charging_coordinator_phase_mode
+                name: Phase mode
+              - entity: number.charging_coordinator_min_current
+                name: Min current
+              - entity: number.charging_coordinator_max_current_1p
+                name: Max current 1p
+              - entity: number.charging_coordinator_max_current_3p
+                name: Max current 3p
+              - entity: number.charging_coordinator_phase_switch_up_power
+                name: Switch to 3p above
+              - entity: number.charging_coordinator_phase_switch_down_power
+                name: Switch to 1p below
+          - type: entities
+            title: PV enable / disable
+            grid_options:
+              columns: full
+            entities:
+              - entity: number.charging_coordinator_enable_threshold
+                name: Enable threshold (0 = min power)
+              - entity: number.charging_coordinator_disable_threshold
+                name: Disable threshold
+              - entity: number.charging_coordinator_enable_delay
+                name: Enable delay
+              - entity: number.charging_coordinator_disable_delay
+                name: Disable delay
+
+      - type: grid
+        cards:
+          - type: entities
+            title: Grid protection
+            grid_options:
+              columns: full
+            entities:
+              - entity: number.charging_coordinator_main_fuse_current
+                name: Main fuse
+              - entity: select.charging_coordinator_unbalance_mode
+                name: Unbalance mode
+              - entity: number.charging_coordinator_unbalance_max
+                name: Max unbalance
+              - entity: sensor.charging_coordinator_limit_current
+                name: Current limit now
+              - entity: sensor.charging_coordinator_fuse_headroom
+                name: Fuse headroom now
+
+  # --- Measurements: every raw value ---------------------------------------
+  - title: Measurements
+    path: measurements
+    icon: mdi:gauge
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: entities
+            title: Grid meter (SHM2)
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_grid_power
+                name: Power
+              - entity: sensor.charging_coordinator_grid_power_l1
+                name: Power L1
+              - entity: sensor.charging_coordinator_grid_power_l2
+                name: Power L2
+              - entity: sensor.charging_coordinator_grid_power_l3
+                name: Power L3
+              - entity: sensor.charging_coordinator_grid_current_l1
+                name: Current L1
+              - entity: sensor.charging_coordinator_grid_current_l2
+                name: Current L2
+              - entity: sensor.charging_coordinator_grid_current_l3
+                name: Current L3
+              - entity: sensor.charging_coordinator_grid_voltage_l1
+                name: Voltage L1
+              - entity: sensor.charging_coordinator_grid_voltage_l2
+                name: Voltage L2
+              - entity: sensor.charging_coordinator_grid_voltage_l3
+                name: Voltage L3
+              - entity: sensor.charging_coordinator_grid_energy_import
+                name: Energy import
+              - entity: sensor.charging_coordinator_grid_energy_export
+                name: Energy export
+
+      - type: grid
+        cards:
+          - type: entities
+            title: Hybrid inverter (STP SE)
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_pv_dc_power
+                name: PV DC power
+              - entity: sensor.charging_coordinator_battery_power
+                name: Battery power
+              - entity: sensor.charging_coordinator_battery_soc
+                name: Battery SoC
+              - entity: sensor.charging_coordinator_battery_charge_energy
+                name: Battery charge energy
+              - entity: sensor.charging_coordinator_battery_discharge_energy
+                name: Battery discharge energy
+          - type: entities
+            title: PV inverter (Sunny Boy)
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_pv_inverter_power
+                name: AC power
+              - entity: sensor.charging_coordinator_pv_inverter_energy
+                name: Yield
+          - type: entities
+            title: Charger (go-e)
+            grid_options:
+              columns: full
+            entities:
+              - entity: binary_sensor.charging_coordinator_vehicle_connected
+                name: Vehicle connected
+              - entity: sensor.charging_coordinator_charger_power
+                name: Power
+              - entity: sensor.charging_coordinator_charger_session_energy
+                name: Session energy
+
+      - type: grid
+        cards:
+          - type: entities
+            title: Decision
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.charging_coordinator_status
+                name: Status
+              - entity: binary_sensor.charging_coordinator_target_enabled
+                name: Charging
+              - entity: sensor.charging_coordinator_target_current
+                name: Target current
+              - entity: sensor.charging_coordinator_target_phases
+                name: Target phases
+              - entity: sensor.charging_coordinator_site_power
+                name: Site power
+              - entity: sensor.charging_coordinator_price
+                name: Price
+              - entity: binary_sensor.charging_coordinator_price_cheap
+                name: Price cheap
+              - entity: sensor.charging_coordinator_battery_mode_target
+                name: Battery mode target
+              - entity: sensor.charging_coordinator_battery_mode_applied
+                name: Battery mode applied
+              - entity: binary_sensor.charging_coordinator_battery_hold
+                name: Battery hold
+              - entity: sensor.charging_coordinator_pv_timer_remaining
+                name: PV timer
+              - entity: sensor.charging_coordinator_phase_timer_remaining
+                name: Phase timer
+              - entity: sensor.charging_coordinator_limit_current
+                name: Current limit
+              - entity: sensor.charging_coordinator_fuse_headroom
+                name: Fuse headroom
+              - entity: sensor.charging_coordinator_unbalance
+                name: Unbalance

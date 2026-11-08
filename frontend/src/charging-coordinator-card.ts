@@ -137,7 +137,10 @@ class ChargingCoordinatorCard extends LitElement {
 
     const pvTimer = this.entity("sensor", "pv_timer_remaining");
     const phaseTimer = this.entity("sensor", "phase_timer_remaining");
-    const limitReason = status.attributes.limit_reason as string | null | undefined;
+    // only show the limit while it actually reduces or blocks charging
+    const limitReason = status.attributes.limited
+      ? (status.attributes.limit_reason as string | null | undefined)
+      : undefined;
     const headroom = num(this.entity("sensor", "fuse_headroom"));
     const unbalance = num(this.entity("sensor", "unbalance"));
 
