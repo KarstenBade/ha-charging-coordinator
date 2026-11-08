@@ -189,3 +189,21 @@ async def test_battery_untouched_until_first_valid_decision(
     await rt._async_tick()
     written = [c.args for c in mock_devices["write_u32"].call_args_list]
     assert (40799, 5000) in written
+
+
+async def test_charger_values_unknown_until_charger_data(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    entry = await setup(hass)
+    await feed_and_tick(hass, entry, grid=10000)  # meter data, but no go-e message yet
+
+    assert hass.states.get("sensor.charging_coordinator_status").state == "charger unavailable"
+    for entity_id in (
+        "sensor.charging_coordinator_charger_power",
+        "binary_sensor.charging_coordinator_vehicle_connected",
+        "binary_sensor.charging_coordinator_target_enabled",
+        "sensor.charging_coordinator_target_current",
+        "sensor.charging_coordinator_target_phases",
+    ):
+        assert hass.states.get(entity_id).state == "unknown", entity_id
+    assert hass.states.get("sensor.charging_coordinator_site_power").state == "10000.0"

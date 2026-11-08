@@ -27,7 +27,7 @@ BINARY_SENSORS = (
     CoordinatorBinarySensorDescription(
         key="target_enabled",
         icon="mdi:ev-station",
-        value_fn=lambda rt: rt.decision.enabled if rt.decision else None,
+        value_fn=lambda rt: rt.decision.enabled if rt.decision and rt.decision.valid else None,
     ),
     CoordinatorBinarySensorDescription(
         key="price_cheap",
@@ -42,7 +42,9 @@ BINARY_SENSORS = (
     CoordinatorBinarySensorDescription(
         key="vehicle_connected",
         icon="mdi:car-electric",
-        value_fn=lambda rt: rt.measurements.charger.connected,
+        value_fn=lambda rt: (
+            rt.measurements.charger.connected if rt.measurements.charger.available else None
+        ),
     ),
 )
 

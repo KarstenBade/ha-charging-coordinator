@@ -40,6 +40,16 @@ def _decision(attr: str) -> Callable[[CoordinatorRuntime], Any]:
     return lambda rt: getattr(rt.decision, attr) if rt.decision else None
 
 
+def _target(attr: str) -> Callable[[CoordinatorRuntime], Any]:
+    """A target of the decision; unknown while it is invalid (e.g. no charger data yet)."""
+    return lambda rt: getattr(rt.decision, attr) if rt.decision and rt.decision.valid else None
+
+
+def _charger_power(rt: CoordinatorRuntime) -> float | None:
+    charger = rt.measurements.charger
+    return charger.power if charger.available else None
+
+
 def _meter(get: Callable[[Any], Any]) -> Callable[[CoordinatorRuntime], Any]:
     return lambda rt: get(rt.meter) if rt.meter else None
 
@@ -134,12 +144,12 @@ SENSORS: tuple[CoordinatorSensorDescription, ...] = (
         native_unit_of_measurement=A,
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_decision("current"),
+        value_fn=_target("current"),
     ),
     CoordinatorSensorDescription(
         key="target_phases",
         state_class=SensorStateClass.MEASUREMENT,  # numeric, so graphs draw a line
-        value_fn=_decision("phases"),
+        value_fn=_target("phases"),
         icon="mdi:sine-wave",
     ),
     _power("site_power", _decision("site_power")),
@@ -194,7 +204,7 @@ SENSORS: tuple[CoordinatorSensorDescription, ...] = (
         value_fn=lambda rt: rt.measurements.price,
         icon="mdi:currency-eur",
     ),
-    _power("charger_power", lambda rt: rt.measurements.charger.power),
+    _power("charger_power", _charger_power),
     _energy("charger_session_energy", lambda rt: rt.goe.data.session_energy),
     # SHM2
     _power("grid_power", _meter(lambda m: m.power)),
