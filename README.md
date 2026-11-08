@@ -119,3 +119,29 @@ cd frontend && npm install && npm run build   # writes custom_components/chargin
 ```
 
 `core/` has no Home Assistant imports. All control logic is tested with a fake clock in `tests/core/test_controller.py`.
+
+### Local Home Assistant dev instance
+
+A second HA instance runs natively on the development machine, with the integration symlinked from the repo. It talks to the real hardware, so you can watch and debug decisions without touching production HA. A native venv is used instead of Docker because Docker Desktop on macOS has no real host networking, so the SHM2 multicast would never arrive.
+
+```bash
+scripts/dev-setup.sh            # Python 3.14 venv .venv-dev with HA 2026.10.4 (needs uv)
+scripts/dev-setup.sh 2026.11.0  # update to another HA version
+scripts/dev-run.sh              # http://localhost:8123
+```
+
+In VS Code, start **Home Assistant (dev)** from *Run and Debug* to get breakpoints anywhere, including HA itself (`justMyCode` is off). **Home Assistant (dev, asyncio debug)** adds HA's `--debug` mode, which reports blocking calls in the event loop. After a code change, restart HA; the symlink means no copying.
+
+Only `dev-config/configuration.yaml` is tracked. It loads a small subset of `default_config`, enables debug logging for the integration, and adds a price slider (`input_number.dev_electricity_price` → `sensor.dev_electricity_price`). Drag the slider across `price_threshold` to test `pv_grid` and the battery hold.
+
+Connecting to the hardware:
+
+| Source | Setup |
+|---|---|
+| SHM2 | Multicast reaches the Mac directly if it is on the same network. Prefer Ethernet; Wi-Fi often drops multicast. Allow incoming connections for Python if the macOS firewall asks. |
+| STP SE / Sunny Boy | Same Modbus TCP hosts as production. The inverters accept several clients. |
+| go-e | Add the MQTT integration pointing at production HA's Mosquitto broker, with a separate MQTT user. Disable MQTT discovery in its options, otherwise all production MQTT devices appear here. |
+
+> **Keep `active_control` off in the dev instance** unless production HA and evcc are both hands-off. In shadow mode the dev instance writes nothing to the charger or the inverter.
+
+The `FFmpeg fails` error at startup comes from HA itself, not from this integration, and is harmless; `brew install ffmpeg` silences it.

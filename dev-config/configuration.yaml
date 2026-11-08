@@ -1,0 +1,41 @@
+# Local Home Assistant dev instance for charging_coordinator.
+# Only this file is tracked in git; everything else HA writes here is ignored.
+
+homeassistant:
+  name: Charging Coordinator Dev
+  unit_system: metric
+  currency: EUR
+  time_zone: Europe/Berlin
+  country: DE
+
+# A small subset of default_config, enough for onboarding, dashboards,
+# history and diagnostics, without bluetooth, zeroconf and similar.
+frontend:
+config:
+history:
+logbook:
+system_health:
+
+logger:
+  default: warning
+  logs:
+    custom_components.charging_coordinator: debug
+
+# Price slider for testing: move it across price_threshold to test pv_grid
+# and the battery hold. Select sensor.dev_electricity_price in the config flow.
+input_number:
+  dev_electricity_price:
+    name: Dev electricity price
+    min: 0
+    max: 0.6
+    step: 0.01
+    initial: 0.30
+    unit_of_measurement: EUR/kWh
+    mode: slider
+
+template:
+  - sensor:
+      - name: Dev electricity price
+        unique_id: dev_electricity_price
+        unit_of_measurement: EUR/kWh
+        state: "{{ states('input_number.dev_electricity_price') }}"

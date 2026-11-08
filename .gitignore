@@ -7,3 +7,7 @@ __pycache__/
 .ruff_cache/
 frontend/node_modules/
 .DS_Store
+.venv-dev/
+# Local HA dev instance: keep only the configuration
+dev-config/*
+!dev-config/configuration.yaml
