@@ -26,3 +26,6 @@ DEFAULT_CONTROL_INTERVAL = 10
 
 SMA_POLL_INTERVAL = 5
 SMA_STALE_AFTER = 30.0
+# after startup or enabling active control: keep the battery as it is until the first
+# valid decision, at most this long (s)
+BATTERY_STARTUP_GRACE = 60.0

@@ -165,3 +165,27 @@ async def test_settings_are_restored_into_runtime(
     )
     assert entry.runtime_data.settings.price_threshold == 0.15
     assert isinstance(MeterSample, type)
+
+
+async def test_battery_untouched_until_first_valid_decision(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    hass.states.async_set("sensor.price", "0.10")
+    entry = await setup(hass)
+    rt = entry.runtime_data
+
+    # active control comes back on after a restart: no meter data yet, decision invalid
+    await hass.services.async_call(
+        "switch",
+        "turn_on",
+        {"entity_id": "switch.charging_coordinator_active_control"},
+        blocking=True,
+    )
+    assert rt.decision is not None and not rt.decision.valid
+    mock_devices["write_u32"].assert_not_called()
+
+    # still no valid data after the grace time: fall back to normal (clears stale holds)
+    rt._battery_wait_until = 0.0
+    await rt._async_tick()
+    written = [c.args for c in mock_devices["write_u32"].call_args_list]
+    assert (40799, 5000) in written

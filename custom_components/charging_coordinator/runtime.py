@@ -16,6 +16,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
+    BATTERY_STARTUP_GRACE,
     CONF_BATTERY_MAX_CHARGE_POWER,
     CONF_BATTERY_MAX_DISCHARGE_POWER,
     CONF_CHARGER_GRID_PHASE,
@@ -69,6 +70,8 @@ class CoordinatorRuntime:
         )
         self.active_control = False
         self.controller = Controller()
+        # monotonic deadline until which an invalid decision leaves the battery alone
+        self._battery_wait_until: float | None = None
 
         serial = cfg.get(CONF_SHM2_SERIAL)
         self.shm2 = Shm2Listener(int(serial) if serial else None)
@@ -154,8 +157,13 @@ class CoordinatorRuntime:
         self.active_control = active
         if active:
             _LOGGER.info("Active control enabled")
-            # clear a hold left over from an earlier crash before deciding anew
+            # forget the applied mode so the first valid decision is written, which
+            # also clears a hold left over from an earlier crash
             self.battery.applied_mode = None
+            # Right after startup the first ticks run before charger and meter data
+            # arrived. Releasing a hold then would let the battery discharge into
+            # a grid-charging vehicle until the next tick, so wait for valid data.
+            self._battery_wait_until = time.monotonic() + BATTERY_STARTUP_GRACE
             # start from what the charger actually does, not from the shadow state
             self.controller.resync()
             await self._async_tick()
@@ -236,6 +244,15 @@ class CoordinatorRuntime:
             decision.enabled, int(decision.current), decision.phases
         ):
             self.controller.notify_charger_command(time.monotonic())
+
+        if decision.valid:
+            self._battery_wait_until = None
+        elif self._battery_wait_until is not None:
+            if time.monotonic() < self._battery_wait_until:
+                _LOGGER.debug("Waiting for valid data before setting the battery mode")
+                return
+            # no valid data in time: fall back to the decision (normal), clearing stale holds
+            self._battery_wait_until = None
         try:
             await self.battery.set_mode(decision.battery_mode)
         except ModbusError as err:
