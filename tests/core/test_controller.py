@@ -327,3 +327,111 @@ def test_charger_phase_mapping(ctl: Controller) -> None:
     ch = charger(ChargerStatus.CHARGING, enabled=True, current=16)
     d = ctl.decide(meas(-5000, ch, grid_phase_current=(0, 0, 45)), s, 0)
     assert "main fuse L3" in d.status and d.current == 21
+
+
+# --- shadow mode: nothing is written, so the charger never follows the decisions ---
+
+
+def test_shadow_enable_is_not_undone_next_tick(ctl: Controller) -> None:
+    ctl._last_mode = ChargeMode.PV_GRID
+    idle = charger(phases=3)  # stays disabled because nothing is written
+    m = meas(500, idle, price=0.30)
+    s = replace(PV_GRID, price_threshold=0.35)
+    d = ctl.decide(m, s, 0)
+    assert d.enabled
+    for t in (10, 20, 30, 300):
+        d = ctl.decide(m, s, t)
+        assert d.enabled and d.pv_action != "enable", t
+
+
+def test_shadow_pv_session_keeps_running(ctl: Controller) -> None:
+    m = meas(-1500, charger())
+    ctl.decide(m, PV, 0)
+    assert ctl.decide(m, PV, 60).enabled
+    d = ctl.decide(m, PV, 70)
+    assert d.enabled and d.current == 6  # 1500 W / 230 V = 6.5 A
+
+
+def test_shadow_phase_switch_completes(ctl: Controller) -> None:
+    # session of ours on 1p; the real charger stays on 1p because nothing is written
+    ch = charger(ChargerStatus.CHARGING, enabled=True, current=32, phases=1)
+    m = meas(-1500, ch)
+    ctl.decide(m, PV, 0)
+    d = ctl.decide(m, PV, 60)
+    assert d.phases == 3 and "switching" in d.status
+    d = ctl.decide(m, PV, 70)
+    assert d.phases == 3 and d.status == "phase switch settling"
+    d = ctl.decide(m, PV, 121)
+    assert d.phases == 3 and "switching" not in d.status and d.status != "phase switch settling"
+
+
+def test_shadow_ignores_ev_power_of_foreign_session(ctl: Controller) -> None:
+    # evcc charges 1p at 10 A (2300 W) while our decision is "disabled"
+    ctl._enabled, ctl._phases = False, 1
+    ch = charger(ChargerStatus.CHARGING, enabled=True, current=10)
+    d = ctl.decide(meas(-500, ch), PV, 0)  # 2800 W available to a session of ours
+    assert d.pv_action == "enable"
+
+
+def test_restart_adopts_running_session(ctl: Controller) -> None:
+    ch = charger(ChargerStatus.CHARGING, enabled=True, current=10)
+    d = ctl.decide(meas(-200, ch), PV, 0)
+    assert d.enabled and d.pv_action != "enable"
+
+
+# --- active mode: changes made outside the coordinator (go-e app) are adopted ---
+
+ACTIVE = True
+
+
+def _running_1p(ctl: Controller, s: Settings = PV) -> None:
+    """A session of ours on 1p at 10 A, last written at t=0."""
+    ch = charger(ChargerStatus.CHARGING, enabled=True, current=10)
+    assert ctl.decide(meas(-200, ch), s, 0, ACTIVE).enabled
+    ctl.notify_charger_command(0)
+
+
+def test_active_app_disable_waits_for_command_settle(ctl: Controller) -> None:
+    _running_1p(ctl)
+    stopped = charger(enabled=False)  # app pressed stop
+    d = ctl.decide(meas(-2000, stopped), PV, 30, ACTIVE)
+    assert d.enabled  # our own write may still be in flight
+    d = ctl.decide(meas(-2000, stopped), PV, 70, ACTIVE)
+    assert not d.enabled and d.pv_action == "enable"  # adopted, normal enable delay
+    assert ctl.decide(meas(-2000, stopped), PV, 130, ACTIVE).enabled
+
+
+def test_active_app_disable_in_now_mode_reenables(ctl: Controller) -> None:
+    s = replace(PV, charge_mode=ChargeMode.NOW)
+    ctl._last_mode = ChargeMode.NOW
+    _running_1p(ctl, s)
+    d = ctl.decide(meas(500, charger(enabled=False, phases=3)), s, 70, ACTIVE)
+    assert d.enabled and d.phases == 3
+
+
+def test_active_app_phase_change_is_kept_in_auto(ctl: Controller) -> None:
+    _running_1p(ctl)
+    three = charger(ChargerStatus.CHARGING, enabled=True, current=6, phases=3)
+    d = ctl.decide(meas(-1000, three), PV, 70, ACTIVE)  # 5140 W available >= 5000
+    assert d.phases == 3 and "switching" not in d.status and d.phase_action == "inactive"
+
+
+def test_active_app_phase_change_is_reverted_in_fixed_mode(ctl: Controller) -> None:
+    s = replace(PV, phase_mode=PhaseMode.ONE)
+    _running_1p(ctl, s)
+    three = charger(ChargerStatus.CHARGING, enabled=True, current=6, phases=3)
+    d = ctl.decide(meas(-1000, three), s, 70, ACTIVE)
+    assert d.phases == 1 and d.current == 6 and "switching to 1p" in d.status
+
+
+def test_shadow_never_adopts_app_changes(ctl: Controller) -> None:
+    _running_1p(ctl)
+    d = ctl.decide(meas(-2000, charger(enabled=False)), PV, 300)
+    assert d.enabled
+
+
+def test_resync_adopts_immediately(ctl: Controller) -> None:
+    _running_1p(ctl)
+    ctl.resync()  # active control switched on
+    d = ctl.decide(meas(-200, charger(enabled=False)), PV, 10, ACTIVE)
+    assert not d.enabled and d.status == "pv: waiting for surplus"

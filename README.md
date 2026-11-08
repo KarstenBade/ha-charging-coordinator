@@ -95,6 +95,8 @@ Each tick, the following steps run:
    - go-e: `amp`, `psm`, `frc` over MQTT `…/set`.
    - Battery: mode over Modbus.
 
+**Changes made in the go-e app** (start/stop, phases) are adopted in active mode, as evcc does, once the coordinator's own last `frc`/`psm` write is more than 60 s old. The normal logic then decides from the new state: in `pv`, a stopped session restarts only after the enable delay if there is surplus. An app phase change stays in `auto` until the phase timer decides otherwise, and is switched back right away if the phase mode is fixed. In shadow mode the coordinator keeps its own decisions and never reads them back. Switching `active_control` on adopts the charger's current state first.
+
 `sensor.charging_coordinator_status` explains every decision, for example `pv: enabling in 42 s` or `now: 3p max power, limited by main fuse L2`.
 
 ## Development

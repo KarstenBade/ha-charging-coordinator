@@ -44,8 +44,7 @@ async def test_apply_writes_only_changes_in_order() -> None:
     goe.handle_message("go-eCharger/123456/psm", "2")
     goe.handle_message("go-eCharger/123456/frc", "1")
 
-    switched = await goe.apply(enabled=True, current=6, phases=1)
-    assert switched
+    assert await goe.apply(enabled=True, current=6, phases=1)
     assert published == [
         ("go-eCharger/123456/amp/set", "6"),
         ("go-eCharger/123456/psm/set", "1"),
@@ -54,5 +53,10 @@ async def test_apply_writes_only_changes_in_order() -> None:
     published.clear()
     assert not await goe.apply(enabled=True, current=6, phases=1)
     assert published == []
-    await goe.apply(enabled=False, current=0, phases=1)
+    assert await goe.apply(enabled=False, current=0, phases=1)
     assert published == [("go-eCharger/123456/frc/set", "1")]
+    published.clear()
+    # a current change alone is not a command the charger needs time to follow
+    goe.data.values["frc"] = 2
+    assert not await goe.apply(enabled=True, current=10, phases=1)
+    assert published == [("go-eCharger/123456/amp/set", "10")]

@@ -121,17 +121,19 @@ class GoeCharger:
         """Write the changes needed to reach the requested state.
 
         A phase change first drops to the requested (min) current, then sets
-        `psm`. Returns True if the phases were switched.
+        `psm`. Returns True if the enabled state (`frc`) or the phases (`psm`)
+        were written, i.e. the charger needs time to follow.
         """
         v = self.data.values
-        switched = False
+        commanded = False
         if enabled and v.get("amp") != current:
             await self._set("amp", current)
         psm = PSM_1P if phases == 1 else PSM_3P
         if v.get("psm") != psm:
             await self._set("psm", psm)
-            switched = True
+            commanded = True
         frc = FRC_ON if enabled else FRC_OFF
         if v.get("frc") != frc:
             await self._set("frc", frc)
-        return switched
+            commanded = True
+        return commanded

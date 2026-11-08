@@ -156,6 +156,8 @@ class CoordinatorRuntime:
             _LOGGER.info("Active control enabled")
             # clear a hold left over from an earlier crash before deciding anew
             self.battery.applied_mode = None
+            # start from what the charger actually does, not from the shadow state
+            self.controller.resync()
             await self._async_tick()
         else:
             _LOGGER.info("Active control disabled, entering shadow mode")
@@ -220,19 +222,20 @@ class CoordinatorRuntime:
 
     async def _async_tick(self, _now: datetime | None = None) -> None:
         self.measurements = self._measurements()
-        decision = self.controller.decide(self.measurements, self.settings, time.monotonic())
+        decision = self.controller.decide(
+            self.measurements, self.settings, time.monotonic(), self.active_control
+        )
         self.decision = decision
         if self.active_control:
             await self._async_actuate(decision)
         self._notify()
 
     async def _async_actuate(self, decision: Decision) -> None:
-        if decision.valid:
-            switched = await self.goe.apply(
-                decision.enabled, int(decision.current), decision.phases
-            )
-            if switched and self.measurements.charger.enabled:
-                self.controller.notify_phase_switch(time.monotonic())
+        # the controller starts the phase switch settle time itself
+        if decision.valid and await self.goe.apply(
+            decision.enabled, int(decision.current), decision.phases
+        ):
+            self.controller.notify_charger_command(time.monotonic())
         try:
             await self.battery.set_mode(decision.battery_mode)
         except ModbusError as err:
