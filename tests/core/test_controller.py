@@ -435,3 +435,12 @@ def test_resync_adopts_immediately(ctl: Controller) -> None:
     ctl.resync()  # active control switched on
     d = ctl.decide(meas(-200, charger(enabled=False)), PV, 10, ACTIVE)
     assert not d.enabled and d.status == "pv: waiting for surplus"
+
+
+def test_site_power_published_without_vehicle(ctl: Controller) -> None:
+    # 500 W import + 300 W battery discharge
+    m = meas(500, charger(ChargerStatus.DISCONNECTED), battery_power=300, battery_soc=50)
+    d = ctl.decide(m, PV, 0)
+    assert d.status == "disconnected" and d.site_power == 800
+    assert ctl.decide(m, replace(PV, charge_mode=ChargeMode.OFF), 10).site_power == 800
+    assert ctl.decide(meas(500, ChargerState(available=False)), PV, 20).site_power == 500

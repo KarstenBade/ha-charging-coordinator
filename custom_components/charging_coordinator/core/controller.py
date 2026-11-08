@@ -108,18 +108,21 @@ class Controller:
             elif sync_from_charger and self._charger_settled(now):
                 self._adopt_charger_state(charger)
 
+        # site power is a property of the house, published whatever the charger does
+        sp = compute_site_power(m, s)
         base = Decision(
             valid=True,
             phases=self._phases or charger.phases,
             battery_mode=battery_mode,
             battery_reason=battery_reason,
+            site_power=sp.site_power if sp else None,
             price_cheap=cheap,
         )
 
         if not charger.available:
             return replace(base, valid=False, status="charger unavailable")
 
-        decision = self._decide(m, s, now, base, grid_cheap, cheap)
+        decision = self._decide(m, s, now, base, sp, grid_cheap, cheap)
         if decision.valid:
             if self._enabled and decision.enabled and decision.phases != self._phases:
                 self.notify_phase_switch(now)
@@ -154,6 +157,7 @@ class Controller:
         s: Settings,
         now: float,
         base: Decision,
+        sp: SitePower | None,
         grid_cheap: bool,
         cheap: bool,
     ) -> Decision:
@@ -165,11 +169,8 @@ class Controller:
             return replace(base, status="disconnected")
         if s.charge_mode == ChargeMode.OFF:
             return replace(base, status="off")
-
-        sp = compute_site_power(m, s)
         if sp is None:
             return replace(base, valid=False, status="waiting for grid meter data")
-        base = replace(base, site_power=sp.site_power)
 
         if self._phase_switch_at is not None:
             if now - self._phase_switch_at < PHASE_SWITCH_SETTLE:
