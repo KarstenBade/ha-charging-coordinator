@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Run the local Home Assistant dev instance on http://localhost:8123.
-set -euo pipefail
+#
+# A restart from the HA UI makes Home Assistant exit with code 100 and expects
+# a supervisor to start it again (as HA OS does), so this script loops on it.
+set -uo pipefail
+
+RESTART_EXIT_CODE=100
 
 cd "$(dirname "$0")/.."
 
@@ -9,4 +14,11 @@ if [[ ! -x .venv-dev/bin/python ]]; then
   exit 1
 fi
 
-exec .venv-dev/bin/python -m homeassistant --config dev-config "$@"
+while true; do
+  .venv-dev/bin/python -m homeassistant --config dev-config "$@"
+  code=$?
+  if [[ $code -ne $RESTART_EXIT_CODE ]]; then
+    exit $code
+  fi
+  echo "Restart requested, starting Home Assistant again..."
+done
