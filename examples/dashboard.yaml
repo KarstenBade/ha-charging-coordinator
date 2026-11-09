@@ -21,6 +21,13 @@ views:
           - type: heading
             heading: Coordinator
           - type: custom:charging-coordinator-card
+            # State of charge of your cars, e.g. from Tibber. Replace the entity IDs
+            # with yours (or pick them in the card editor); unknown ones show "–".
+            vehicles:
+              - name: ID.3
+                soc: sensor.id_3_battery_level
+              - name: ID.7
+                soc: sensor.id_7_battery_level
             grid_options:
               columns: full
 

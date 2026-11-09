@@ -34,7 +34,7 @@ The control logic follows evcc's proven algorithms (surplus calculation, enable/
     - `static`: `unbalance_max / 230 V`
     - `off`
 - **Shadow mode:** with `switch.charging_coordinator_active_control` off, every decision is computed and published but nothing is written. Use it to compare against evcc before cutover.
-- **Lovelace card** `custom:charging-coordinator-card`, bundled and registered automatically, plus an [example dashboard](examples/dashboard.yaml).
+- **Lovelace card** `custom:charging-coordinator-card`, bundled and registered automatically, plus an [example dashboard](examples/dashboard.yaml). See [The card](#the-card).
 
 ## Prerequisites
 
@@ -64,6 +64,29 @@ Then restart HA and add *Charging Coordinator* under *Settings → Devices & ser
 | Control interval | Default 10 s |
 
 For fixed time-of-use tariffs, create a template sensor that outputs the current price.
+
+## The card
+
+`custom:charging-coordinator-card` shows everything relevant at one glance:
+
+- **Top:** charge mode and phase mode as chips. Tap one to change it in a small menu. On the right, whether the coordinator is **Active** or in **Shadow** mode.
+- **Headline:** what is happening, e.g. *Charging · 10.6 kW* with *3p · 16 A · from grid*, *Paused* with the reason, or *No vehicle connected*.
+- **Energy flow:** PV, grid, home, home battery (SoC ring, hold marker) and the charger around a hub. Animated dots show the direction, faster with more power; with reduced motion enabled they are static arrows. The SoC of each configured car is shown under the charger, since the go-e can't tell which car is plugged in.
+- **Chips at the bottom:** the next action with its timer (*Starts in 35 s*, *Stops in 2:40 min*, *3 phases in 42 s*), price against threshold, and reasons: why the battery holds, and why charging is limited or blocked.
+
+Configure it in the card editor or in YAML:
+
+```yaml
+type: custom:charging-coordinator-card
+title: Wallbox            # optional
+vehicles:                 # optional, SoC sensors e.g. from Tibber
+  - name: ID.3
+    soc: sensor.id_3_battery_level
+  - name: ID.7
+    soc: sensor.id_7_battery_level
+```
+
+All parameters are on the dashboard's *Settings* view; the card only changes the charge and phase mode.
 
 ## Rollout
 
