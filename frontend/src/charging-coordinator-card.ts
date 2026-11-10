@@ -1000,14 +1000,28 @@ class ChargingCoordinatorCardEditor extends LitElement {
   }
 }
 
-customElements.define("charging-coordinator-card", ChargingCoordinatorCard);
-customElements.define("charging-coordinator-card-editor", ChargingCoordinatorCardEditor);
+// The bundle may be loaded twice, e.g. by the integration and by a manually added
+// dashboard resource. Defining an element twice throws, which would stop this module
+// before the rest is registered. So the editor comes first and existing ones are kept.
+function define(name: string, element: CustomElementConstructor): void {
+  if (customElements.get(name)) {
+    console.info(`${name} is already defined, keeping the first loaded version`);
+    return;
+  }
+  customElements.define(name, element);
+}
 
-(window as unknown as { customCards?: unknown[] }).customCards ??= [];
-(window as unknown as { customCards: unknown[] }).customCards.push({
-  type: "charging-coordinator-card",
-  name: "Charging Coordinator",
-  description: "Energy flow, charging state, vehicles and controls of the Charging Coordinator",
-  preview: true,
-  documentationURL: "https://github.com/KarstenBade/ha-charging-coordinator",
-});
+define("charging-coordinator-card-editor", ChargingCoordinatorCardEditor);
+define("charging-coordinator-card", ChargingCoordinatorCard);
+
+const customCards = ((window as unknown as { customCards?: { type: string }[] }).customCards ??=
+  []);
+if (!customCards.some((c) => c.type === "charging-coordinator-card")) {
+  customCards.push({
+    type: "charging-coordinator-card",
+    name: "Charging Coordinator",
+    description: "Energy flow, charging state, vehicles and controls of the Charging Coordinator",
+    preview: true,
+    documentationURL: "https://github.com/KarstenBade/ha-charging-coordinator",
+  } as { type: string });
+}
