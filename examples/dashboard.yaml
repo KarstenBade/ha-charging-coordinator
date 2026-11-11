@@ -35,6 +35,15 @@ views:
         cards:
           - type: heading
             heading: Control
+          - type: custom:charging-coordinator-control-card
+            grid_options:
+              columns: full
+          - type: custom:charging-coordinator-price-card
+            grid_options:
+              columns: full
+          - type: custom:charging-coordinator-battery-card
+            grid_options:
+              columns: full
           - type: tile
             entity: switch.charging_coordinator_active_control
             name: Active control (off = shadow mode)
@@ -90,6 +99,9 @@ views:
           - type: tile
             entity: binary_sensor.charging_coordinator_vehicle_connected
             name: Vehicle
+          - type: tile
+            entity: text.charging_coordinator_connected_vehicle
+            name: Plugged-in car
           - type: tile
             entity: binary_sensor.charging_coordinator_target_enabled
             name: Charging

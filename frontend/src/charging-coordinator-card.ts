@@ -1,41 +1,60 @@
 import { LitElement, css, html, nothing, svg, type SVGTemplateResult, type TemplateResult } from "lit";
-
-// --- Home Assistant types (only what the card uses) -------------------------
-
-interface HassEntity {
-  entity_id: string;
-  state: string;
-  attributes: Record<string, unknown>;
-}
-
-interface Hass {
-  states: Record<string, HassEntity | undefined>;
-  callService(domain: string, service: string, data: Record<string, unknown>): Promise<unknown>;
-}
+import {
+  CHARGE_MODES,
+  COLORS,
+  CoordinatorCard,
+  cleanEntities,
+  define,
+  entitiesSchema,
+  entityLabels,
+  formatPower,
+  loadHaForm,
+  num,
+  pipeColor,
+  registerCard,
+  type BaseConfig,
+  type EntitySlot,
+  type Hass,
+  type HassEntity,
+  type Option,
+} from "./common";
+// the other cards register themselves when the bundle loads
+import "./control-card";
+import "./battery-card";
+import "./price-card";
 
 interface VehicleConfig {
   name?: string;
   soc?: string; // entity id of the vehicle's state of charge, e.g. from Tibber
 }
 
-interface CardConfig {
-  type: string;
-  title?: string;
-  prefix?: string;
+interface CardConfig extends BaseConfig {
   vehicles?: VehicleConfig[];
 }
 
-interface Option {
-  value: string;
-  label: string;
-  icon: string;
-}
-
-const CHARGE_MODES: Option[] = [
-  { value: "off", label: "Off", icon: "mdi:power" },
-  { value: "pv", label: "PV", icon: "mdi:solar-power" },
-  { value: "pv_grid", label: "PV + grid", icon: "mdi:transmission-tower-import" },
-  { value: "now", label: "Now", icon: "mdi:lightning-bolt" },
+/** Every entity the card uses; each can be mapped in the card's `entities`. */
+const SLOTS: EntitySlot[] = [
+  { key: "status", domain: "sensor", label: "Status" },
+  { key: "active_control", domain: "switch", label: "Active control" },
+  { key: "charge_mode", domain: "select", label: "Charge mode" },
+  { key: "phase_mode", domain: "select", label: "Phase mode" },
+  { key: "grid_power", domain: "sensor", label: "Grid power (+ import, - export)" },
+  { key: "pv_dc_power", domain: "sensor", label: "PV power of the hybrid inverter (can charge the battery directly)" },
+  { key: "pv_inverter_power", domain: "sensor", label: "PV power of another inverter" },
+  { key: "battery_power", domain: "sensor", label: "Battery power (+ discharge, - charge)" },
+  { key: "battery_soc", domain: "sensor", label: "Battery state of charge" },
+  { key: "battery_hold", domain: "binary_sensor", label: "Battery hold" },
+  { key: "charger_power", domain: "sensor", label: "Charger power" },
+  { key: "vehicle_connected", domain: "binary_sensor", label: "Vehicle connected" },
+  { key: "connected_vehicle", domain: "text", label: "Plugged-in car (picked in the card)" },
+  { key: "target_enabled", domain: "binary_sensor", label: "Charging released" },
+  { key: "target_current", domain: "sensor", label: "Target current" },
+  { key: "target_phases", domain: "sensor", label: "Target phases" },
+  { key: "price", domain: "sensor", label: "Current price" },
+  { key: "price_threshold", domain: "number", label: "Price limit" },
+  { key: "price_cheap", domain: "binary_sensor", label: "Price at or below the limit" },
+  { key: "pv_timer_remaining", domain: "sensor", label: "Start / stop timer" },
+  { key: "phase_timer_remaining", domain: "sensor", label: "Phase switch timer" },
 ];
 
 const PHASE_MODES: Option[] = [
@@ -45,18 +64,6 @@ const PHASE_MODES: Option[] = [
 ];
 
 // --- formatting -------------------------------------------------------------
-
-function num(entity: HassEntity | undefined): number | undefined {
-  if (!entity) return undefined;
-  const value = Number(entity.state);
-  return Number.isFinite(value) ? value : undefined;
-}
-
-function formatPower(watts: number | undefined): string {
-  if (watts === undefined) return "–";
-  const abs = Math.abs(watts);
-  return abs >= 1000 ? `${(watts / 1000).toFixed(1)} kW` : `${Math.round(watts)} W`;
-}
 
 function formatDuration(seconds: number | undefined): string {
   if (seconds === undefined) return "";
@@ -69,44 +76,31 @@ function capitalize(text: string): string {
 }
 
 // --- flow diagram geometry (SVG user units, the HTML overlay uses the same box) --
+//
+// Every flow is a pipe: straight runs with rounded corners, so a pipe keeps its
+// width everywhere and joins line up exactly. The house rail runs along the bottom
+// row: the grid feeds it straight from the left and it feeds the charger straight to
+// the right. PV comes down into it, home rises out of it, and the battery hangs
+// above it between them, taking from or feeding into the rail. Export forks off the
+// PV pipe down to the grid. Pipe width is power; colors fade into the rail's grey
+// where sources merge, because the meter can't tell which source feeds which
+// consumer.
 
-const VIEW_W = 320;
-const VIEW_H = 300;
-const NODE_R = 24;
-const HUB = { x: 160, y: 122 };
+const VIEW_W = 388;
+const VIEW_H = 140;
+const LEFT_X = 122; // pipes meet the left labels
+const RIGHT_X = 262; // pipes meet the right labels
+const MERGE_X = 168; // PV and grid have joined the rail, their colors faded to grey
+const SPLIT_X = 216; // the rail splits into home and charger
+const BATTERY = { x: 192, top: 6, w: 40, h: 44 }; // between PV and home, above the rail
+const ROW_TOP = 26; // label rows
+const ROW_BOTTOM = 112;
+const MAX_PIPE = 36; // px of all sources together ...
+const FULL_SCALE = 6000; // ... at this many W or more; below, pipes get thinner
 
-type NodeKey = "pv" | "grid" | "home" | "battery" | "charger";
+const MIN_FLOW = 30; // W below which a pipe counts as idle
 
-const NODES: Record<NodeKey, { x: number; y: number }> = {
-  pv: { x: 160, y: 36 },
-  grid: { x: 44, y: 122 },
-  home: { x: 276, y: 122 },
-  battery: { x: 84, y: 206 },
-  charger: { x: 236, y: 206 },
-};
-
-const COLORS: Record<string, string> = {
-  pv: "var(--energy-solar-color, #ff9800)",
-  gridIn: "var(--energy-grid-consumption-color, #488fc2)",
-  gridOut: "var(--energy-grid-return-color, #8353d1)",
-  batteryOut: "var(--energy-battery-out-color, #4db6ac)",
-  batteryIn: "var(--energy-battery-in-color, #f06292)",
-  home: "var(--secondary-text-color, #727272)",
-  charger: "var(--success-color, #43a047)",
-  idle: "var(--divider-color, #e0e0e0)",
-  hold: "var(--warning-color, #ffa600)",
-};
-
-const MIN_FLOW = 30; // W below which a line counts as idle
-
-interface Flow {
-  node: NodeKey;
-  power: number; // W, absolute
-  inbound: boolean; // towards the hub
-  color: string;
-}
-
-/** Seconds a dot needs from node to hub: faster with more power. */
+/** Seconds the dots in a pipe need for one cycle: faster with more power. */
 function dotDuration(power: number): number {
   return Math.min(6, Math.max(0.9, 4000 / (power + 400)));
 }
@@ -115,30 +109,55 @@ function pct(value: number, total: number): string {
   return `${(value / total) * 100}%`;
 }
 
+/** Corner radius of a pipe's center line, large enough for a clean inner corner. */
+function radius(width: number): number {
+  return Math.max(6, width / 2 + 4);
+}
+
+/** SVG path from commands and numbers (rounded; integers such as arc flags stay bare). */
+function path(...parts: (string | number)[]): string {
+  return parts
+    .map((p) => (typeof p === "number" && !Number.isInteger(p) ? p.toFixed(1) : String(p)))
+    .join(" ");
+}
+
+interface Vehicle {
+  name: string;
+  soc: number | undefined;
+  entity?: string;
+}
+
+interface VehicleState {
+  connected: boolean | undefined; // undefined: no charger data
+  car?: Vehicle; // the plugged-in car, if known
+  others: Vehicle[]; // shown in the bottom row
+  pickable: boolean; // the plugged-in car can be picked in the bottom row
+}
+
 // --- the card ---------------------------------------------------------------
 
-class ChargingCoordinatorCard extends LitElement {
+let cardCount = 0; // unique gradient ids per card
+
+class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
   static properties = {
-    hass: { attribute: false },
-    _config: { state: true },
+    ...CoordinatorCard.properties,
     _menu: { state: true },
   };
 
-  hass?: Hass;
-  private _config?: CardConfig;
   private _menu: "mode" | "phase" | null = null;
   private _menuPos = { left: 16, top: 56 };
+  private _uid = `ccc${++cardCount}`;
   private _reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
   setConfig(config: CardConfig): void {
     if (config.vehicles !== undefined && !Array.isArray(config.vehicles)) {
       throw new Error("vehicles must be a list of {name, soc}");
     }
-    this._config = { prefix: "charging_coordinator", ...config };
+    super.setConfig(config);
   }
 
   getCardSize(): number {
-    return 8;
+    return 5;
   }
 
   getGridOptions(): Record<string, number> {
@@ -153,16 +172,35 @@ class ChargingCoordinatorCard extends LitElement {
     return document.createElement("charging-coordinator-card-editor");
   }
 
-  private entity(domain: string, key: string): HassEntity | undefined {
-    return this.hass?.states[`${domain}.${this._config?.prefix}_${key}`];
-  }
-
   private async select(key: string, option: string): Promise<void> {
     this._menu = null;
-    await this.hass?.callService("select", "select_option", {
-      entity_id: `select.${this._config?.prefix}_${key}`,
-      option,
-    });
+    await this.selectOption(key, option);
+  }
+
+  private async pickVehicle(name: string): Promise<void> {
+    await this.setText("connected_vehicle", name);
+  }
+
+  /** Which configured car is plugged in: the only one, or the one picked in the card. */
+  private vehicleState(): VehicleState {
+    const vehicles: Vehicle[] = (this._config?.vehicles ?? []).map((v, i) => ({
+      name: v.name || `Vehicle ${i + 1}`,
+      soc: v.soc ? num(this.hass?.states[v.soc]) : undefined,
+      entity: v.soc,
+    }));
+    const raw = this.entity("binary_sensor", "vehicle_connected")?.state;
+    const connected = raw === "on" ? true : raw === "off" ? false : undefined;
+    const picked = this.entity("text", "connected_vehicle");
+    let car: Vehicle | undefined;
+    if (connected) {
+      car = vehicles.length === 1 ? vehicles[0] : vehicles.find((v) => v.name === picked?.state);
+    }
+    return {
+      connected,
+      car,
+      others: vehicles.filter((v) => v !== car),
+      pickable: connected === true && picked !== undefined && vehicles.length > 1,
+    };
   }
 
   // --- render ---------------------------------------------------------------
@@ -174,7 +212,7 @@ class ChargingCoordinatorCard extends LitElement {
     if (!status) {
       return html`<ha-card>
         <div class="warning">
-          Charging Coordinator entities not found (prefix "${this._config.prefix}").
+          Charging Coordinator entities not found (looked for ${this.entityId("sensor", "status")}).
         </div>
       </ha-card>`;
     }
@@ -185,6 +223,7 @@ class ChargingCoordinatorCard extends LitElement {
       (o) => o.value === this.entity("select", "phase_mode")?.state,
     );
     const targetPhases = num(this.entity("sensor", "target_phases"));
+    const vehicles = this.vehicleState();
 
     return html`
       <ha-card>
@@ -210,8 +249,8 @@ class ChargingCoordinatorCard extends LitElement {
             ${active ? "Active" : "Shadow"}
           </span>
         </div>
-        ${this.renderMenu()} ${this.renderHeadline(status, mode?.value)} ${this.renderFlow()}
-        ${this.renderFacts(status)}
+        ${this.renderMenu()} ${this.renderHeadline(status, mode?.value)}
+        ${this.renderFlow(vehicles)} ${this.renderFacts(status, vehicles)}
       </ha-card>
     `;
   }
@@ -292,11 +331,6 @@ class ChargingCoordinatorCard extends LitElement {
     const ev = num(this.entity("sensor", "charger_power"));
     const current = num(this.entity("sensor", "target_current"));
     const phases = num(this.entity("sensor", "target_phases"));
-    const grid = num(this.entity("sensor", "grid_power")) ?? 0;
-    const battery = num(this.entity("sensor", "battery_power")) ?? 0;
-    const pv =
-      (num(this.entity("sensor", "pv_dc_power")) ?? 0) +
-      (num(this.entity("sensor", "pv_inverter_power")) ?? 0);
 
     const raw = status.state;
     const cut = raw.indexOf(": ");
@@ -316,24 +350,9 @@ class ChargingCoordinatorCard extends LitElement {
       state = "Charging off";
       tone = "muted";
     } else if (enabled && (ev ?? 0) > 100) {
-      // PV covers the house first; only what's left over counts as charging from PV
-      const evPower = ev ?? 0;
-      const home = grid + pv + battery - evPower;
-      const fromPv = Math.min(evPower, Math.max(0, pv - home));
-      const fromGrid = Math.min(evPower - fromPv, Math.max(0, grid));
-      const fromBattery = evPower - fromPv - fromGrid;
-      const sources = [
-        fromPv > 200 ? "PV" : "",
-        fromGrid > 200 ? "grid" : "",
-        fromBattery > 200 && battery > 200 ? "battery" : "",
-      ].filter(Boolean);
+      // no "from PV / grid": the meter can't tell which source feeds the charger
       state = `Charging · ${formatPower(ev)}`;
-      sub = [
-        phases && current ? `${phases}p · ${current} A` : "",
-        sources.length ? `from ${sources.join(" + ")}` : "",
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      sub = phases && current ? `${phases}p · ${current} A` : "";
       tone = "charging";
     } else if (enabled) {
       state = "Ready";
@@ -352,7 +371,7 @@ class ChargingCoordinatorCard extends LitElement {
     `;
   }
 
-  private renderFlow() {
+  private renderFlow(vehicles: VehicleState) {
     const grid = num(this.entity("sensor", "grid_power"));
     const pvDc = num(this.entity("sensor", "pv_dc_power"));
     const pvAc = num(this.entity("sensor", "pv_inverter_power"));
@@ -361,204 +380,290 @@ class ChargingCoordinatorCard extends LitElement {
     const soc = num(this.entity("sensor", "battery_soc"));
     const ev = num(this.entity("sensor", "charger_power"));
     const hold = this.entity("binary_sensor", "battery_hold")?.state === "on";
-    const enabled = this.entity("binary_sensor", "target_enabled")?.state === "on";
-    const current = num(this.entity("sensor", "target_current"));
-    const phases = num(this.entity("sensor", "target_phases"));
-    const connected = this.entity("binary_sensor", "vehicle_connected")?.state === "on";
     const home =
       grid === undefined ? undefined : grid + (pv ?? 0) + (battery ?? 0) - (ev ?? 0);
 
-    const flows: Flow[] = [
-      { node: "pv", power: Math.max(0, pv ?? 0), inbound: true, color: COLORS.pv },
-      {
-        node: "grid",
-        power: Math.abs(grid ?? 0),
-        inbound: (grid ?? 0) >= 0,
-        color: (grid ?? 0) >= 0 ? COLORS.gridIn : COLORS.gridOut,
-      },
-      {
-        node: "battery",
-        power: Math.abs(battery ?? 0),
-        inbound: (battery ?? 0) >= 0,
-        color: (battery ?? 0) >= 0 ? COLORS.batteryOut : COLORS.batteryIn,
-      },
-      { node: "home", power: Math.max(0, home ?? 0), inbound: false, color: COLORS.home },
-      { node: "charger", power: Math.max(0, ev ?? 0), inbound: false, color: COLORS.charger },
-    ];
+    // powers (W, >= 0) and pipe widths (px). The hybrid inverter charges the battery
+    // from its own PV strings on the DC side, so that part goes from PV straight into
+    // the battery and never reaches the house; only the rest (e.g. from the grid)
+    // comes from the rail. Export is drawn as part of PV.
+    const pvP = Math.max(0, pv ?? 0);
+    const importP = Math.max(0, grid ?? 0);
+    const dischargeP = Math.max(0, battery ?? 0);
+    const chargeP = Math.max(0, -(battery ?? 0));
+    const directP = Math.min(chargeP, Math.max(0, pvDc ?? 0));
+    const railChargeP = chargeP - directP;
+    const exportP = Math.min(pvP - directP, Math.max(0, -(grid ?? 0)));
+    const homeP = Math.max(0, home ?? 0);
+    const evP = Math.max(0, ev ?? 0);
+    const scale = MAX_PIPE / Math.max(pvP + importP + dischargeP, FULL_SCALE);
+    const w = (p: number) => (p > MIN_FLOW ? Math.max(2, p * scale) : 0);
+    const wDirect = w(directP); // PV straight into the battery
+    const wExport = w(exportP);
+    const wPv = w(pvP - directP - exportP); // PV into the rail
+    const wImport = w(importP);
+    const wLeft = wPv + wImport; // rail left of the battery
+    const wCharge = w(railChargeP); // battery charged from the rail
+    const wDischarge = w(dischargeP);
+    // What leaves the rail is exactly what enters it, split between home and charger
+    // by power. Sizing these from their own powers would let minimum widths make the
+    // two sides differ and leave a step in the rail.
+    const wRight = Math.max(0, wLeft - wCharge + wDischarge); // rail right of the battery
+    const homeShare = homeP > MIN_FLOW ? homeP : 0;
+    const evShare = evP > MIN_FLOW ? evP : 0;
+    const consumers = homeShare + evShare;
+    const wHome = consumers > 0 ? (wRight * homeShare) / consumers : 0;
+    const wEv = consumers > 0 ? (wRight * evShare) / consumers : 0;
 
+    const gridColor = exportP > MIN_FLOW || (grid ?? 0) < -MIN_FLOW ? COLORS.gridOut : COLORS.gridIn;
     const batteryColor = hold
       ? COLORS.hold
       : (battery ?? 0) < -MIN_FLOW
         ? COLORS.batteryIn
-        : COLORS.batteryOut;
-    const chargerColor = (ev ?? 0) > MIN_FLOW ? COLORS.charger : COLORS.idle;
+        : (battery ?? 0) > MIN_FLOW
+          ? COLORS.batteryOut
+          : COLORS.home;
+    const chargerColor = evP > MIN_FLOW ? COLORS.charger : COLORS.idle;
+
+    // The rail runs along the bottom row, centered on it, with its bottom edge as the
+    // reference: grid and charger use its bottom lane and run straight; PV comes down
+    // into its top lane, home rises from its top lane, the battery hangs above it.
+    // Paths without flow aren't drawn.
+    const B = ROW_BOTTOM + Math.max(wLeft, wRight) / 2;
+    const bx = BATTERY.x;
+    const batteryBottom = BATTERY.top + BATTERY.h;
+    const left = LEFT_X;
+    const pvStackTop = ROW_TOP - (wDirect + wPv + wExport) / 2; // top to bottom: battery, rail, export
+    const pvPipe = (width: number) => {
+      const r = radius(width);
+      const y0 = pvStackTop + wDirect + width / 2;
+      const y1 = B - wLeft + width / 2;
+      const x = MERGE_X - 1 - 2 * r;
+      return path("M", left, y0, "L", x, y0, "A", r, r, 0, 0, 1, x + r, y0 + r,
+        "L", x + r, y1 - r, "A", r, r, 0, 0, 0, x + 2 * r, y1, "L", MERGE_X + 0.5, y1);
+    };
+    const exportPipe = (width: number) => {
+      const r = radius(width);
+      const y = pvStackTop + wDirect + wPv + width / 2;
+      return path("M", left, y, "A", r, r, 0, 0, 1, left + r, y + r,
+        "L", left + r, ROW_BOTTOM - r, "A", r, r, 0, 0, 1, left, ROW_BOTTOM);
+    };
+    const directPipe = (width: number) => {
+      const y = pvStackTop + width / 2;
+      return path("M", left, y, "L", bx - BATTERY.w / 2 + 1, y);
+    };
+    const gridPipe = (width: number) => {
+      const y = B - width / 2;
+      return path("M", left, y, "L", MERGE_X + 0.5, y);
+    };
+    const chargePipe = (width: number) => {
+      const r = radius(width);
+      const y = B - wLeft + width / 2;
+      return path("M", MERGE_X - 0.5, y, "L", bx - r, y, "A", r, r, 0, 0, 0, bx, y - r,
+        "L", bx, batteryBottom);
+    };
+    const dischargePipe = (width: number) => {
+      const r = radius(width);
+      const y = B - wRight + width / 2;
+      return path("M", bx, batteryBottom, "L", bx, y - r, "A", r, r, 0, 0, 0, bx + r, y,
+        "L", SPLIT_X + 0.5, y);
+    };
+    const homePipe = (width: number) => {
+      const r = radius(width);
+      const y0 = B - wRight + width / 2;
+      const x = RIGHT_X - 1 - 2 * r;
+      return path("M", SPLIT_X - 0.5, y0, "L", x, y0, "A", r, r, 0, 0, 0, x + r, y0 - r,
+        "L", x + r, ROW_TOP + r, "A", r, r, 0, 0, 1, x + 2 * r, ROW_TOP, "L", RIGHT_X, ROW_TOP);
+    };
+    const chargerPipe = (width: number) => {
+      const y = B - width / 2;
+      return path("M", SPLIT_X - 0.5, y, "L", RIGHT_X, y);
+    };
+
+    // colors fade along the pipes: sources into the rail's grey, the rail into consumers
+    const id = (name: string) => `${this._uid}-${name}`;
+    const grey = pipeColor(COLORS.home);
+    const fade = (name: string, x1: number, y1: number, x2: number, y2: number, from: string, to: string) =>
+      svg`<linearGradient id=${id(name)} gradientUnits="userSpaceOnUse" x1=${x1} y1=${y1} x2=${x2} y2=${y2}>
+        <stop offset="0.25" style="stop-color: ${pipeColor(from)}"></stop>
+        <stop offset="1" style="stop-color: ${pipeColor(to)}"></stop>
+      </linearGradient>`;
+    const defs = svg`<defs>
+      ${fade("pv", 0, ROW_TOP, 0, B - wLeft, COLORS.pv, COLORS.home)}
+      ${fade("direct", left, 0, bx - BATTERY.w / 2, 0, COLORS.pv, COLORS.batteryIn)}
+      ${fade("grid", left, 0, MERGE_X, 0, COLORS.gridIn, COLORS.home)}
+      ${fade("export", 0, ROW_TOP, 0, ROW_BOTTOM, COLORS.pv, COLORS.gridOut)}
+      ${fade("charge", 0, B - wLeft, 0, batteryBottom, COLORS.home, COLORS.batteryIn)}
+      ${fade("discharge", 0, batteryBottom, 0, B - wRight, COLORS.batteryOut, COLORS.home)}
+      ${fade("ev", SPLIT_X, 0, RIGHT_X, 0, COLORS.home, COLORS.charger)}
+    </defs>`;
+
+    const pipe = (route: (width: number) => string, width: number, fill: string, power: number) =>
+      width > 0 ? this.pipe(route(width), width, fill, power) : nothing;
+    const railH = wCharge ? wRight : wLeft;
+    const tick = (x: number, top: number, h: number, color: string) =>
+      h > 0
+        ? svg`<rect x=${x - 1.5} y=${top} width="3" height=${h} rx="1.5" style="fill: ${color}"></rect>`
+        : nothing;
+    const level = Math.min(100, Math.max(0, soc ?? 0)) / 100;
+    const fillH = (BATTERY.h - 4) * level;
 
     return html`
       <div class="flow" style="aspect-ratio: ${VIEW_W} / ${VIEW_H}">
         <svg viewBox="0 0 ${VIEW_W} ${VIEW_H}" aria-hidden="true">
-          ${flows.map((f) => this.renderLine(f))}
-          <circle class="hub" cx=${HUB.x} cy=${HUB.y} r="4"></circle>
-          ${this.renderNodeCircle("pv", COLORS.pv)}
-          ${this.renderNodeCircle(
-            "grid",
-            (grid ?? 0) >= 0 ? COLORS.gridIn : COLORS.gridOut,
-          )}
-          ${this.renderNodeCircle("home", COLORS.home)}
-          ${this.renderNodeCircle("battery", batteryColor, soc)}
-          ${this.renderNodeCircle("charger", chargerColor)}
+          ${defs}
+          ${railH > 0
+            ? svg`<rect x=${MERGE_X} y=${B - railH} width=${SPLIT_X - MERGE_X} height=${railH} style="fill: ${grey}"></rect>`
+            : nothing}
+          ${pipe(directPipe, wDirect, `url(#${id("direct")})`, directP)}
+          ${pipe(pvPipe, wPv, `url(#${id("pv")})`, pvP - directP - exportP)}
+          ${wExport > 0 ? this.pipe(exportPipe(wExport), wExport, `url(#${id("export")})`, exportP) : nothing}
+          ${wExport > 0 ? nothing : pipe(gridPipe, wImport, `url(#${id("grid")})`, importP)}
+          ${wDischarge > 0
+            ? this.pipe(dischargePipe(wDischarge), wDischarge, `url(#${id("discharge")})`, dischargeP)
+            : wCharge > 0
+              ? this.pipe(chargePipe(wCharge), wCharge, `url(#${id("charge")})`, railChargeP)
+              : nothing}
+          ${pipe(homePipe, wHome, grey, homeP)}
+          ${pipe(chargerPipe, wEv, `url(#${id("ev")})`, evP)}
+          ${railH > 0 ? this.pulse(path("M", MERGE_X, B - railH / 2, "L", SPLIT_X, B - railH / 2), railH, homeP + evP) : nothing}
+          ${tick(left - 1.5, pvStackTop, wDirect + wPv + wExport, COLORS.pv)}
+          ${wExport > 0
+            ? tick(left - 1.5, ROW_BOTTOM - wExport / 2, wExport, gridColor)
+            : tick(left - 1.5, wImport ? B - wImport : ROW_BOTTOM, wImport, gridColor)}
+          ${tick(RIGHT_X + 1.5, ROW_TOP - wHome / 2, wHome, COLORS.home)}
+          ${tick(RIGHT_X + 1.5, wEv ? B - wEv : ROW_BOTTOM, wEv, chargerColor)}
+          <rect x=${bx - 7} y=${BATTERY.top - 4} width="14" height="5" rx="1.5"
+            style="fill: ${batteryColor}"></rect>
+          <rect class="battery" x=${bx - BATTERY.w / 2} y=${BATTERY.top} width=${BATTERY.w}
+            height=${BATTERY.h} rx="7" style="stroke: ${batteryColor}"></rect>
+          ${fillH > 0
+            ? svg`<rect x=${bx - BATTERY.w / 2 + 3} y=${batteryBottom - 3 - fillH}
+                width=${BATTERY.w - 6} height=${fillH} rx=${Math.min(4, fillH / 2)}
+                style="fill: ${pipeColor(batteryColor)}"></rect>`
+            : nothing}
         </svg>
 
-        ${this.renderNode("pv", "mdi:solar-power-variant", COLORS.pv, formatPower(pv), "PV", "side")}
-        ${this.renderNode(
-          "grid",
+        ${this.renderSide("left", ROW_TOP, "mdi:solar-power-variant", COLORS.pv, formatPower(pv), "PV")}
+        ${this.renderSide(
+          "left",
+          ROW_BOTTOM,
           "mdi:transmission-tower",
-          (grid ?? 0) >= 0 ? COLORS.gridIn : COLORS.gridOut,
+          gridColor,
           formatPower(grid === undefined ? undefined : Math.abs(grid)),
           grid === undefined ? "Grid" : grid >= 0 ? "Grid import" : "Grid export",
         )}
-        ${this.renderNode("home", "mdi:home", COLORS.home, formatPower(home), "Home")}
-        ${this.renderNode(
-          "battery",
-          hold ? "mdi:battery-lock" : "mdi:home-battery",
-          batteryColor,
-          soc === undefined ? "–" : `${Math.round(soc)} %`,
-          html`${formatPower(battery === undefined ? undefined : Math.abs(battery))}
-          ${(battery ?? 0) > MIN_FLOW
-            ? "out"
-            : (battery ?? 0) < -MIN_FLOW
-              ? "in"
-              : ""}${hold ? html` · <b class="hold">hold</b>` : nothing}`,
-        )}
-        ${this.renderNode(
-          "charger",
+        ${this.renderSide("right", ROW_TOP, "mdi:home", COLORS.home, formatPower(home), "Home")}
+        ${this.renderSide(
+          "right",
+          ROW_BOTTOM,
           "mdi:ev-station",
           chargerColor,
           formatPower(ev),
-          !connected
-            ? "No vehicle"
-            : enabled && phases && current
-              ? `${phases}p · ${current} A`
-              : "Paused",
-          "below",
-          this.renderVehicles(),
+          this.renderChargerSub(vehicles),
         )}
+        <div
+          class="battery-label"
+          style="left: ${pct(bx, VIEW_W)}; top: ${pct(BATTERY.top + BATTERY.h / 2, VIEW_H)}"
+          title=${hold ? "Battery hold: the home battery is not discharging" : "Home battery"}
+        >
+          <div class="value">${soc === undefined ? "–" : `${Math.round(soc)}%`}</div>
+          <div class="node-sub">
+            ${hold
+              ? html`<b class="hold">hold</b>`
+              : formatPower(battery === undefined ? undefined : Math.abs(battery))}
+          </div>
+        </div>
       </div>
     `;
   }
 
-  private renderLine(flow: Flow): SVGTemplateResult {
-    const node = NODES[flow.node];
-    const dx = HUB.x - node.x;
-    const dy = HUB.y - node.y;
-    const len = Math.hypot(dx, dy);
-    const ux = dx / len;
-    const uy = dy / len;
-    const sx = node.x + ux * (NODE_R + 2);
-    const sy = node.y + uy * (NODE_R + 2);
-    const ex = HUB.x - ux * 5;
-    const ey = HUB.y - uy * 5;
-    const path = `M${sx.toFixed(1)},${sy.toFixed(1)} L${ex.toFixed(1)},${ey.toFixed(1)}`;
-    const activeFlow = flow.power > MIN_FLOW;
-
-    if (!activeFlow) {
-      return svg`<path class="line idle" d=${path}></path>`;
-    }
-
-    if (this._reducedMotion) {
-      // static arrow in the middle of the line, pointing in the flow direction
-      const mx = (sx + ex) / 2;
-      const my = (sy + ey) / 2;
-      const angle = (Math.atan2(uy, ux) * 180) / Math.PI + (flow.inbound ? 0 : 180);
-      return svg`
-        <path class="line" d=${path} style="stroke: ${flow.color}"></path>
-        <polygon points="-4,-4 4,0 -4,4" style="fill: ${flow.color}"
-          transform="translate(${mx.toFixed(1)} ${my.toFixed(1)}) rotate(${angle.toFixed(0)})"></polygon>
-      `;
-    }
-
-    const dur = dotDuration(flow.power);
-    const keyPoints = flow.inbound ? "0;1" : "1;0";
-    return svg`
-      <path class="line" d=${path} style="stroke: ${flow.color}"></path>
-      ${[0, 1, 2].map(
-        (i) => svg`
-          <circle class="dot" r="3" style="fill: ${flow.color}">
-            <animateMotion dur="${dur.toFixed(2)}s" repeatCount="indefinite"
-              begin="${(-(i * dur) / 3).toFixed(2)}s" path=${path}
-              keyPoints=${keyPoints} keyTimes="0;1" calcMode="linear"></animateMotion>
-          </circle>`,
-      )}
-    `;
+  /** A pipe of the given width along `d` (drawn in flow direction), with moving dots. */
+  private pipe(d: string, width: number, stroke: string, power: number): SVGTemplateResult {
+    return svg`<path class="pipe" d=${d} style="stroke: ${stroke}; stroke-width: ${width.toFixed(1)}"></path>
+      ${this.pulse(d, width, power)}`;
   }
 
-  private renderNodeCircle(key: NodeKey, color: string, soc?: number): SVGTemplateResult {
-    const { x, y } = NODES[key];
-    const circumference = 2 * Math.PI * NODE_R;
-    return svg`
-      <circle class="node" cx=${x} cy=${y} r=${NODE_R}
-        style="stroke: ${soc === undefined ? color : COLORS.idle}"></circle>
-      ${soc === undefined
-        ? nothing
-        : svg`<circle class="ring" cx=${x} cy=${y} r=${NODE_R}
-            style="stroke: ${color}"
-            stroke-dasharray="${((circumference * Math.min(100, Math.max(0, soc))) / 100).toFixed(1)} ${circumference.toFixed(1)}"
-            transform="rotate(-90 ${x} ${y})"></circle>`}
-    `;
+  private pulse(d: string, width: number, power: number): SVGTemplateResult | typeof nothing {
+    if (this._reducedMotion || power <= MIN_FLOW) return nothing;
+    return svg`<path class="pulse" d=${d}
+      style="stroke-width: ${Math.min(4, Math.max(2, width * 0.4)).toFixed(1)}">
+      <animate attributeName="stroke-dashoffset" from="0" to="-36"
+        dur="${dotDuration(power).toFixed(2)}s" repeatCount="indefinite"></animate>
+    </path>`;
   }
 
-  private renderNode(
-    key: NodeKey,
+  private renderSide(
+    side: "left" | "right",
+    y: number,
     icon: string,
     color: string,
     value: string,
     sub: string | TemplateResult,
-    placement: "below" | "side" = "below",
-    extra: TemplateResult | typeof nothing = nothing,
   ) {
-    const { x, y } = NODES[key];
-    const labelStyle =
-      placement === "side"
-        ? `left: ${pct(x + NODE_R + 8, VIEW_W)}; top: ${pct(y, VIEW_H)}; transform: translateY(-50%); text-align: left;`
-        : `left: ${pct(x, VIEW_W)}; top: ${pct(y + NODE_R + 4, VIEW_H)}; transform: translateX(-50%);`;
+    const style =
+      side === "left"
+        ? `right: calc(100% - ${pct(LEFT_X - 8, VIEW_W)}); top: ${pct(y, VIEW_H)}; text-align: right;`
+        : `left: ${pct(RIGHT_X + 8, VIEW_W)}; top: ${pct(y, VIEW_H)};`;
+    const iconEl = html`<ha-icon .icon=${icon} style="color: ${color}"></ha-icon>`;
     return html`
-      <ha-icon
-        class="node-icon"
-        .icon=${icon}
-        style="left: ${pct(x, VIEW_W)}; top: ${pct(y, VIEW_H)}; color: ${color}"
-      ></ha-icon>
-      <div class="node-label ${key}" style=${labelStyle}>
-        <div class="value">${value}</div>
-        <div class="node-sub">${sub}</div>
-        ${extra}
+      <div class="side ${side}" style=${style}>
+        ${side === "right" ? iconEl : nothing}
+        <div>
+          <div class="value">${value}</div>
+          ${typeof sub === "string" ? html`<div class="node-sub">${sub}</div>` : sub}
+        </div>
+        ${side === "left" ? iconEl : nothing}
       </div>
     `;
   }
 
-  private renderVehicles(): TemplateResult | typeof nothing {
-    const vehicles = this._config?.vehicles ?? [];
-    if (!vehicles.length) return nothing;
-    return html`
-      <div class="vehicles">
-        ${vehicles.map((v, i) => {
-          const soc = v.soc ? num(this.hass?.states[v.soc]) : undefined;
-          const name = v.name || `Vehicle ${i + 1}`;
-          return html`
-            <div class="vehicle" title=${v.soc ?? ""}>
-              <span class="vname">${name}</span>
-              <span class="bar"
-                ><span style="width: ${Math.min(100, Math.max(0, soc ?? 0))}%"></span
-              ></span>
-              <span class="vsoc">${soc === undefined ? "–" : `${Math.round(soc)} %`}</span>
-            </div>
-          `;
-        })}
-      </div>
-    `;
+  private renderChargerSub(vehicles: VehicleState): TemplateResult {
+    const { connected, car, pickable } = vehicles;
+    if (car) {
+      return html`<div class="car" title=${car.entity ?? ""}>
+        <span>${car.name}</span>${this.renderSocBar(car.soc)}
+        <b>${car.soc === undefined ? "–" : `${Math.round(car.soc)} %`}</b>
+      </div>`;
+    }
+    const text =
+      connected === undefined
+        ? "–"
+        : !connected
+          ? "No vehicle"
+          : pickable
+            ? "Which car?"
+            : "Vehicle connected";
+    return html`<div class="node-sub ${pickable ? "ask" : ""}">${text}</div>`;
   }
 
-  private renderFacts(status: HassEntity) {
-    const facts: TemplateResult[] = [];
-    const connected = this.entity("binary_sensor", "vehicle_connected")?.state === "on";
+  private renderSocBar(soc: number | undefined) {
+    return html`<span class="bar"
+      ><span style="width: ${Math.min(100, Math.max(0, soc ?? 0))}%"></span
+    ></span>`;
+  }
+
+  /** Cars that aren't at the charger; tap one to mark it as plugged in. */
+  private renderVehicleChips(vehicles: VehicleState): TemplateResult[] {
+    const ask = vehicles.pickable && !vehicles.car;
+    return vehicles.others.map((v) => {
+      const content = html`<span class="vname">${v.name}</span>${this.renderSocBar(v.soc)}
+        <b>${v.soc === undefined ? "–" : `${Math.round(v.soc)} %`}</b>`;
+      return vehicles.pickable
+        ? html`<button
+            class="fact vehicle ${ask ? "ask" : ""}"
+            title="Mark ${v.name} as plugged in"
+            @click=${() => this.pickVehicle(v.name)}
+          >
+            ${content}
+          </button>`
+        : html`<span class="fact vehicle" title=${v.entity ?? ""}>${content}</span>`;
+    });
+  }
+
+  private renderFacts(status: HassEntity, vehicles: VehicleState) {
+    const facts: TemplateResult[] = this.renderVehicleChips(vehicles);
+    const connected = vehicles.connected === true;
 
     // next action with its timer
     const pvTimer = this.entity("sensor", "pv_timer_remaining");
@@ -738,14 +843,18 @@ class ChargingCoordinatorCard extends LitElement {
       margin-left: auto;
     }
 
-    /* headline */
+    /* headline: state and details on one line */
     .headline {
-      margin: 14px 0 4px;
+      margin: 10px 0 2px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      column-gap: 10px;
     }
     .headline .state {
-      font-size: 1.5rem;
+      font-size: 1.15rem;
       font-weight: 500;
-      line-height: 1.2;
+      line-height: 1.3;
     }
     .headline.charging .state {
       color: var(--success-color, #43a047);
@@ -755,85 +864,119 @@ class ChargingCoordinatorCard extends LitElement {
     }
     .headline .sub {
       color: var(--secondary-text-color);
-      margin-top: 2px;
+      font-size: 0.9rem;
     }
 
     /* flow diagram */
     .flow {
+      container-type: inline-size;
       position: relative;
       width: 100%;
-      max-width: 440px;
-      margin: 0 auto;
+      max-width: 480px;
+      margin: 10px auto 0;
     }
-    .flow svg {
+    .flow > svg {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
       overflow: visible;
     }
-    .line {
+    .pipe {
       fill: none;
-      stroke-width: 2;
+      stroke-linecap: butt;
+    }
+    .pulse {
+      fill: none;
+      stroke: var(--primary-text-color, #212121);
+      stroke-opacity: 0.45;
       stroke-linecap: round;
+      stroke-dasharray: 0.1 18;
     }
-    .line.idle {
-      stroke: var(--divider-color, #e0e0e0);
-    }
-    .hub {
-      fill: var(--secondary-text-color, #727272);
-    }
-    .node {
+    .battery {
       fill: var(--card-background-color, #fff);
-      stroke-width: 2.5;
+      stroke-width: 2;
     }
-    .ring {
-      fill: none;
-      stroke-width: 3.5;
-      stroke-linecap: round;
-    }
-    .node-icon {
+    .side {
       position: absolute;
-      transform: translate(-50%, -50%);
-      --mdc-icon-size: 24px;
-      pointer-events: none;
-    }
-    .node-label {
-      position: absolute;
-      text-align: center;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
       white-space: nowrap;
       line-height: 1.25;
     }
-    .node-label .value {
+    .side .value {
       font-weight: 500;
+    }
+    .side ha-icon {
+      /* a shrink-to-fit label can otherwise collapse the icon to zero width */
+      --mdc-icon-size: 28px;
+      flex: none;
+      width: 28px;
+      height: 28px;
+    }
+    .battery-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.15;
+      pointer-events: auto;
+    }
+    .battery-label .value {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .battery-label .node-sub {
+      font-size: 0.68rem;
     }
     .node-sub {
       font-size: 0.78rem;
       color: var(--secondary-text-color);
     }
-    .node-sub .hold {
+    .node-sub.ask {
+      color: var(--primary-color);
+    }
+    .hold {
       color: var(--warning-color, #ffa600);
     }
 
-    /* vehicles under the charger node */
-    .vehicles {
-      margin-top: 4px;
-      display: grid;
-      gap: 3px;
+    @container (max-width: 360px) {
+      .side {
+        gap: 6px;
+      }
+      .side ha-icon {
+        --mdc-icon-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+      .side .car .bar {
+        width: 20px;
+      }
+      .battery-label .value {
+        font-size: 0.78rem;
+      }
+      .battery-label .node-sub {
+        font-size: 0.62rem;
+      }
+    }
+
+    /* cars: the plugged-in one at the charger, the others in the bottom row */
+    .car {
+      display: flex;
+      align-items: center;
+      gap: 5px;
       font-size: 0.78rem;
     }
-    .vehicle {
-      display: grid;
-      grid-template-columns: auto 52px auto;
-      align-items: center;
-      gap: 6px;
-    }
-    .vname {
-      text-align: right;
-      color: var(--secondary-text-color);
+    .car b,
+    .vehicle b {
+      font-weight: 500;
     }
     .bar {
-      height: 6px;
+      flex: none;
+      width: 30px;
+      height: 5px;
       border-radius: 3px;
       background: var(--divider-color, #e0e0e0);
       overflow: hidden;
@@ -843,10 +986,22 @@ class ChargingCoordinatorCard extends LitElement {
       height: 100%;
       background: var(--success-color, #43a047);
     }
-    .vsoc {
-      text-align: left;
-      font-weight: 500;
-      min-width: 32px;
+    .vehicle .bar span {
+      background: var(--secondary-text-color);
+    }
+    .vehicle .vname {
+      color: var(--secondary-text-color);
+    }
+    button.fact {
+      border: 1px solid transparent;
+    }
+    button.fact:hover,
+    button.fact:focus-visible {
+      border-color: var(--divider-color);
+      outline: none;
+    }
+    button.fact.ask {
+      border: 1px dashed var(--primary-color);
     }
 
     /* facts: next action, price, reasons */
@@ -899,7 +1054,8 @@ const EDITOR_VEHICLE_SLOTS = 3;
 interface FormData {
   title?: string;
   prefix?: string;
-  [key: string]: string | undefined;
+  entities?: Record<string, string>;
+  [key: string]: unknown;
 }
 
 const EDITOR_SCHEMA = [
@@ -913,6 +1069,7 @@ const EDITOR_SCHEMA = [
     ],
   })),
   { name: "prefix", selector: { text: {} } },
+  entitiesSchema(SLOTS),
 ];
 
 const EDITOR_LABELS: Record<string, string> = {
@@ -935,23 +1092,16 @@ class ChargingCoordinatorCardEditor extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    void this.loadHaForm();
+    void loadHaForm().then(() => this.requestUpdate());
   }
 
-  /** ha-form is loaded lazily by HA; creating a built-in card editor loads it. */
-  private async loadHaForm(): Promise<void> {
-    if (customElements.get("ha-form")) return;
-    const helpers = await (
-      window as unknown as { loadCardHelpers?: () => Promise<{ createCardElement(c: object): Promise<HTMLElement> }> }
-    ).loadCardHelpers?.();
-    const card = await helpers?.createCardElement({ type: "entities", entities: [] });
-    await (card?.constructor as unknown as { getConfigElement?: () => Promise<unknown> })
-      ?.getConfigElement?.();
-    this.requestUpdate();
-  }
 
   private get data(): FormData {
-    const data: FormData = { title: this._config?.title, prefix: this._config?.prefix };
+    const data: FormData = {
+      title: this._config?.title,
+      prefix: this._config?.prefix,
+      entities: this._config?.entities,
+    };
     (this._config?.vehicles ?? []).slice(0, EDITOR_VEHICLE_SLOTS).forEach((v, i) => {
       data[`vehicle_${i + 1}_name`] = v.name;
       data[`vehicle_${i + 1}_soc`] = v.soc;
@@ -964,8 +1114,8 @@ class ChargingCoordinatorCardEditor extends LitElement {
     const value = ev.detail.value;
     const vehicles: VehicleConfig[] = [];
     for (let i = 1; i <= EDITOR_VEHICLE_SLOTS; i++) {
-      const name = value[`vehicle_${i}_name`];
-      const soc = value[`vehicle_${i}_soc`];
+      const name = value[`vehicle_${i}_name`] as string | undefined;
+      const soc = value[`vehicle_${i}_soc`] as string | undefined;
       if (name || soc) vehicles.push({ ...(name ? { name } : {}), ...(soc ? { soc } : {}) });
     }
     // keep vehicles beyond the editor's slots that were added in YAML
@@ -976,6 +1126,9 @@ class ChargingCoordinatorCardEditor extends LitElement {
       if (value[key]) config[key] = value[key];
       else delete config[key];
     }
+    const entities = cleanEntities(value.entities);
+    if (entities) config.entities = entities;
+    else delete config.entities;
     this._config = config;
     this.dispatchEvent(
       new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }),
@@ -989,8 +1142,12 @@ class ChargingCoordinatorCardEditor extends LitElement {
         .hass=${this.hass}
         .data=${this.data}
         .schema=${EDITOR_SCHEMA}
+        .computeHelper=${(s: { name: string }) =>
+          entityLabels(SLOTS, this._config?.prefix).helper(s.name)}
         .computeLabel=${(s: { name: string }) => {
           if (EDITOR_LABELS[s.name]) return EDITOR_LABELS[s.name];
+          const slot = entityLabels(SLOTS, this._config?.prefix).label(s.name);
+          if (slot) return slot;
           const m = /^vehicle_(\d)_(name|soc)$/.exec(s.name);
           return m ? `Vehicle ${m[1]} ${m[2] === "name" ? "name" : "SoC sensor"}` : s.name;
         }}
@@ -1000,28 +1157,10 @@ class ChargingCoordinatorCardEditor extends LitElement {
   }
 }
 
-// The bundle may be loaded twice, e.g. by the integration and by a manually added
-// dashboard resource. Defining an element twice throws, which would stop this module
-// before the rest is registered. So the editor comes first and existing ones are kept.
-function define(name: string, element: CustomElementConstructor): void {
-  if (customElements.get(name)) {
-    console.info(`${name} is already defined, keeping the first loaded version`);
-    return;
-  }
-  customElements.define(name, element);
-}
-
 define("charging-coordinator-card-editor", ChargingCoordinatorCardEditor);
 define("charging-coordinator-card", ChargingCoordinatorCard);
-
-const customCards = ((window as unknown as { customCards?: { type: string }[] }).customCards ??=
-  []);
-if (!customCards.some((c) => c.type === "charging-coordinator-card")) {
-  customCards.push({
-    type: "charging-coordinator-card",
-    name: "Charging Coordinator",
-    description: "Energy flow, charging state, vehicles and controls of the Charging Coordinator",
-    preview: true,
-    documentationURL: "https://github.com/KarstenBade/ha-charging-coordinator",
-  } as { type: string });
-}
+registerCard(
+  "charging-coordinator-card",
+  "Charging Coordinator",
+  "Energy flow, charging state, vehicles and controls of the Charging Coordinator",
+);

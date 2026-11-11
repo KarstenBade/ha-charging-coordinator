@@ -34,7 +34,7 @@ The control logic follows evcc's proven algorithms (surplus calculation, enable/
     - `static`: `unbalance_max / 230 V`
     - `off`
 - **Shadow mode:** with `switch.charging_coordinator_active_control` off, every decision is computed and published but nothing is written. Use it to compare against evcc before cutover.
-- **Lovelace card** `custom:charging-coordinator-card`, bundled and registered automatically, plus an [example dashboard](examples/dashboard.yaml). See [The card](#the-card).
+- **Lovelace cards**, bundled and registered automatically, plus an [example dashboard](examples/dashboard.yaml). See [The cards](#the-cards).
 
 ## Prerequisites
 
@@ -65,14 +65,17 @@ Then restart HA and add *Charging Coordinator* under *Settings → Devices & ser
 
 For fixed time-of-use tariffs, create a template sensor that outputs the current price.
 
-## The card
+## The cards
+
+### Overview
 
 `custom:charging-coordinator-card` shows everything relevant at one glance:
 
 - **Top:** charge mode and phase mode as chips. Tap one to change it in a small menu. On the right, whether the coordinator is **Active** or in **Shadow** mode.
-- **Headline:** what is happening, e.g. *Charging · 10.6 kW* with *3p · 16 A · from grid*, *Paused* with the reason, or *No vehicle connected*.
-- **Energy flow:** PV, grid, home, home battery (SoC ring, hold marker) and the charger around a hub. Animated dots show the direction, faster with more power; with reduced motion enabled they are static arrows. The SoC of each configured car is shown under the charger, since the go-e can't tell which car is plugged in.
-- **Chips at the bottom:** the next action with its timer (*Starts in 35 s*, *Stops in 2:40 min*, *3 phases in 42 s*), price against threshold, and reasons: why the battery holds, and why charging is limited or blocked.
+- **Headline:** what is happening, e.g. *Charging · 10.6 kW* with *3p · 16 A*, *Paused* with the reason, or *No vehicle connected*.
+- **Energy flow**, left to right, drawn as pipes whose width is power. The house rail runs along the bottom: the grid feeds it from the left and it feeds the charger on the right. PV comes down into it, home rises out of it, and the home battery sits above it between them. PV charges the battery directly (the hybrid inverter does that on its DC side, so it never reaches the house); only charging beyond the hybrid inverter's own PV, e.g. from the grid, comes from the rail, and discharging feeds into the rail. Export forks off the PV pipe down to the grid. Colors fade into the rail's grey where the sources meet, because the meter can't tell which source feeds which consumer. Dots move in the direction of flow, faster with more power (no dots with reduced motion enabled). The battery fills up with its SoC; it is grey while idle and orange with *hold* while it is held.
+- **Cars:** the plugged-in car is shown under the charger with its SoC, and the other configured cars are in the bottom row. The go-e can't tell cars apart, so tap the plugged-in car in the bottom row (the charger asks *Which car?*). Your choice is stored in `text.charging_coordinator_connected_vehicle` and cleared when the car is unplugged. With only one car configured, nothing needs to be picked.
+- **Bottom row:** the cars not at the charger, the next action with its timer (*Starts in 35 s*, *Stops in 2:40 min*, *3 phases in 42 s*), price against threshold, and reasons: why the battery holds, and why charging is limited or blocked.
 
 Configure it in the card editor or in YAML:
 
@@ -86,7 +89,36 @@ vehicles:                 # optional, SoC sensors e.g. from Tibber
     soc: sensor.id_7_battery_level
 ```
 
-All parameters are on the dashboard's *Settings* view; the card only changes the charge and phase mode.
+All parameters are on the dashboard's *Settings* view; the card only changes the charge mode, the phase mode and the plugged-in car.
+
+### Charging control
+
+`custom:charging-coordinator-control-card`: the four charge modes, each with a sentence on what it does, and the price limit on a scale next to the current price ("above your limit: grid charging waits"). Max grid power appears only in *PV + grid*, the one mode it affects. With `compact: true` it shows the same controls in two rows without explanations, for phones.
+
+### Battery and car
+
+`custom:charging-coordinator-battery-card`: the home battery's level against the three priority levels, in words (*below 20 %, PV charges the battery before the car*). Drag a marker, or focus it and use the arrow keys, to change `priority_soc`, `buffer_soc` or `buffer_start_soc`; at 0 % a level is off. Below are the two battery hold switches.
+
+### Prices
+
+`custom:charging-coordinator-price-card`: prices as bars with the limit as a line. Bars at or below the limit, where *PV + grid* also charges from the grid, are green, and the summary says when the next such stretch starts and how long it lasts. Tap a bar to use its price as the limit. The forecast is read from your price sensor's attributes; common formats work without configuration (Nord Pool `raw_today`/`raw_tomorrow` or `today`/`tomorrow`, ENTSO-e `prices`, EPEX Spot `data`, lists of `{start, value}`/`{startsAt, total}`). Without a forecast, the card shows today's recorded prices so far.
+
+### Options for all cards
+
+- `title`: optional heading.
+- `prefix`: only if you renamed the integration's entities; the cards look for `<domain>.<prefix>_<key>`.
+- `entities`: replaces single entities, so the cards also work with other integrations or helpers. Map a key to any entity; keys you leave out keep the coordinator's entity. The card editors list every key with its default under *Entities*.
+
+```yaml
+type: custom:charging-coordinator-control-card
+compact: true
+entities:
+  charge_mode: input_select.car_charge_mode     # select or input_select
+  price_threshold: input_number.car_price_limit # number or input_number
+  price: sensor.electricity_price
+```
+
+Services are called for the mapped entity's own type, so helpers (`input_select`, `input_number`, `input_boolean`, `input_text`) work wherever the card changes something. Power sensors in kW or MW are converted to W. Signs must follow the coordinator's convention: grid power is positive for import, battery power positive for discharge. For the price card, `price_forecast` names the sensor whose attributes hold the forecast; by default it is the coordinator price sensor's `source`.
 
 ## Rollout
 

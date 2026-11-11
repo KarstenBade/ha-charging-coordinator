@@ -301,6 +301,11 @@
       "vehicle_connected": {
         "name": "Vehicle connected"
       }
+    },
+    "text": {
+      "connected_vehicle": {
+        "name": "Connected vehicle"
+      }
     }
   }
 }

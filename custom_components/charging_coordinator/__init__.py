@@ -25,6 +25,7 @@ PLATFORMS = [
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
+    Platform.TEXT,
 ]
 CARD_URL = f"/{DOMAIN}/charging-coordinator-card.js"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)

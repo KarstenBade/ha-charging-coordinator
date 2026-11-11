@@ -25,6 +25,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import ChargingCoordinatorConfigEntry
+from .const import CONF_PRICE_ENTITY
 from .core.models import BatteryMode
 from .entity import CoordinatorEntity
 from .runtime import CoordinatorRuntime
@@ -202,6 +203,8 @@ SENSORS: tuple[CoordinatorSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=3,
         value_fn=lambda rt: rt.measurements.price,
+        # the price card reads the forecast from the source sensor's attributes
+        attrs_fn=lambda rt: {"source": rt.config.get(CONF_PRICE_ENTITY)},
         icon="mdi:currency-eur",
     ),
     _power("charger_power", _charger_power),

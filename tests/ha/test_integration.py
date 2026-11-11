@@ -106,6 +106,10 @@ async def test_shadow_mode_computes_but_writes_nothing(
     assert hass.states.get("sensor.charging_coordinator_battery_soc").state == "60.0"
     assert hass.states.get("sensor.charging_coordinator_pv_dc_power").state == "3000.0"
     assert hass.states.get("select.charging_coordinator_unbalance_mode").state == "static"
+    # the price card finds the forecast through the source price sensor
+    price = hass.states.get("sensor.charging_coordinator_price")
+    assert price.state == "0.3"
+    assert price.attributes["source"] == "sensor.price"
     assert set_topics(mqtt_mock) == []
     mock_devices["write_u32"].assert_not_called()
 
@@ -207,3 +211,26 @@ async def test_charger_values_unknown_until_charger_data(
     ):
         assert hass.states.get(entity_id).state == "unknown", entity_id
     assert hass.states.get("sensor.charging_coordinator_site_power").state == "10000.0"
+
+
+async def test_connected_vehicle_is_cleared_on_unplug(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    entry = await setup(hass)
+    goe_state(hass, car=3, frc=1, amp=6, psm=1, nrg="[230,230,230,0,0,0,0,0,0,0,0,0,0,0,0,0]")
+    await hass.async_block_till_done()
+    await feed_and_tick(hass, entry, grid=500)
+
+    await hass.services.async_call(
+        "text",
+        "set_value",
+        {"entity_id": "text.charging_coordinator_connected_vehicle", "value": "ID.7"},
+        blocking=True,
+    )
+    await feed_and_tick(hass, entry, grid=500)
+    assert hass.states.get("text.charging_coordinator_connected_vehicle").state == "ID.7"
+
+    goe_state(hass, car=1)  # unplugged
+    await hass.async_block_till_done()
+    await feed_and_tick(hass, entry, grid=500)
+    assert hass.states.get("text.charging_coordinator_connected_vehicle").state == ""
