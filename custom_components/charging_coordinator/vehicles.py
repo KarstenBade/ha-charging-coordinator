@@ -35,6 +35,42 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+IMAGE_UPLOAD_MEDIA = "media-source://image_upload/"
+IMAGE_SERVE_URL = "/api/image/serve/"
+IMAGE_SIZE = "512x512"
+
+
+def picture_ref(value: Any) -> str | None:
+    """The picked media's content id, or a picture URL saved by 0.4.2 and earlier."""
+    if isinstance(value, dict):
+        value = value.get("media_content_id")
+    return value if isinstance(value, str) and value else None
+
+
+def picture_url(ref: str | None) -> str | None:
+    """A URL the browser can load without signing; None for media that must be resolved."""
+    if not ref:
+        return None
+    if ref.startswith(IMAGE_UPLOAD_MEDIA):
+        # uploaded images are served without authentication
+        return f"{IMAGE_SERVE_URL}{ref.removeprefix(IMAGE_UPLOAD_MEDIA)}/{IMAGE_SIZE}"
+    if ref.startswith("media-source://"):
+        return None  # e.g. My media: the cards resolve it to a signed URL
+    return ref
+
+
+def media_value(value: Any) -> dict[str, str] | None:
+    """The media picker's value for a stored picture, so reconfiguring keeps it."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value.startswith(IMAGE_SERVE_URL):
+        image_id = value.removeprefix(IMAGE_SERVE_URL).split("/", 1)[0]
+        return {
+            "media_content_id": f"{IMAGE_UPLOAD_MEDIA}{image_id}",
+            "media_content_type": "image",
+        }
+    return None
+
 
 @dataclass(frozen=True)
 class VehicleConfig:
@@ -45,7 +81,7 @@ class VehicleConfig:
     target_soc_entity: str | None = None
     range_entity: str | None = None
     image_entity: str | None = None
-    image: str | None = None  # picture URL, e.g. /api/image/serve/<id>/512x512
+    image: str | None = None  # media content id, or a picture URL
 
     @classmethod
     def from_subentry(cls, subentry: ConfigSubentry) -> VehicleConfig:
@@ -58,7 +94,7 @@ class VehicleConfig:
             target_soc_entity=data.get(CONF_VEHICLE_TARGET_SOC) or None,
             range_entity=data.get(CONF_VEHICLE_RANGE) or None,
             image_entity=data.get(CONF_VEHICLE_IMAGE_ENTITY) or None,
-            image=data.get(CONF_VEHICLE_IMAGE) or None,
+            image=picture_ref(data.get(CONF_VEHICLE_IMAGE)),
         )
 
 
@@ -121,13 +157,13 @@ class VehicleTracker:
             self.connected_since = since
 
     def picture(self) -> str | None:
-        """The image entity's picture (its URL carries a rotating token), else the URL."""
+        """The image entity's picture (its URL carries a rotating token), else the picked one."""
         if self.config.image_entity:
             state = self.hass.states.get(self.config.image_entity)
             picture = state.attributes.get("entity_picture") if state else None
             if picture:
                 return str(picture)
-        return self.config.image
+        return picture_url(self.config.image)
 
     def as_dict(self) -> dict[str, Any]:
         c = self.config
@@ -139,7 +175,9 @@ class VehicleTracker:
             "target_soc_entity": c.target_soc_entity,
             "range_entity": c.range_entity,
             "image_entity": c.image_entity,
-            "image": c.image,
+            "image": picture_url(c.image),
+            # media the cards resolve to a signed URL themselves
+            "image_media": c.image if c.image and picture_url(c.image) is None else None,
         }
 
 

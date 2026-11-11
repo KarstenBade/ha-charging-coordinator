@@ -84,8 +84,8 @@ The go-e can't tell cars apart, so each car gets a template that says when it is
 | Connected | Template that is true while the car is plugged in at home |
 | Target state of charge | Optional, the charge target set in the car; shown on the SoC bar |
 | Range | Optional range sensor |
-| Picture URL | Optional picture of the car, e.g. `/api/image/serve/<id>/512x512` for a picture uploaded in Home Assistant (copy it from a card that shows it), or `/local/cars/id7.png` for `config/www/cars/id7.png` |
-| Picture entity | Optional image or camera entity, e.g. the car image from the car's integration. Used instead of the URL while it has a picture |
+| Picture | Optional picture of the car, picked in the media browser: e.g. one under *Image Upload* that you uploaded for another card, or one from *My media* |
+| Picture entity | Optional image or camera entity, e.g. the car image from the car's integration. Used instead of the picture while it has one |
 
 For example, with a device tracker and a cable sensor:
 

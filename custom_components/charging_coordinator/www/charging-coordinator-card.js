@@ -3,18 +3,18 @@
  * Copyright 2019 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const Ue = globalThis, ht = Ue.ShadowRoot && (Ue.ShadyCSS === void 0 || Ue.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, pt = Symbol(), _t = /* @__PURE__ */ new WeakMap();
-let jt = class {
+const De = globalThis, pt = De.ShadowRoot && (De.ShadyCSS === void 0 || De.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, ut = Symbol(), wt = /* @__PURE__ */ new WeakMap();
+let Gt = class {
   constructor(e, t, r) {
-    if (this._$cssResult$ = !0, r !== pt) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
+    if (this._$cssResult$ = !0, r !== ut) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
     this.cssText = e, this.t = t;
   }
   get styleSheet() {
     let e = this.o;
     const t = this.t;
-    if (ht && e === void 0) {
+    if (pt && e === void 0) {
       const r = t !== void 0 && t.length === 1;
-      r && (e = _t.get(t)), e === void 0 && ((this.o = e = new CSSStyleSheet()).replaceSync(this.cssText), r && _t.set(t, e));
+      r && (e = wt.get(t)), e === void 0 && ((this.o = e = new CSSStyleSheet()).replaceSync(this.cssText), r && wt.set(t, e));
     }
     return e;
   }
@@ -22,33 +22,33 @@ let jt = class {
     return this.cssText;
   }
 };
-const pr = (n) => new jt(typeof n == "string" ? n : n + "", void 0, pt), me = (n, ...e) => {
+const gr = (n) => new Gt(typeof n == "string" ? n : n + "", void 0, ut), me = (n, ...e) => {
   const t = n.length === 1 ? n[0] : e.reduce((r, i, s) => r + ((o) => {
     if (o._$cssResult$ === !0) return o.cssText;
     if (typeof o == "number") return o;
     throw Error("Value passed to 'css' function must be a 'css' function result: " + o + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
   })(i) + n[s + 1], n[0]);
-  return new jt(t, n, pt);
-}, ur = (n, e) => {
-  if (ht) n.adoptedStyleSheets = e.map((t) => t instanceof CSSStyleSheet ? t : t.styleSheet);
+  return new Gt(t, n, ut);
+}, mr = (n, e) => {
+  if (pt) n.adoptedStyleSheets = e.map((t) => t instanceof CSSStyleSheet ? t : t.styleSheet);
   else for (const t of e) {
-    const r = document.createElement("style"), i = Ue.litNonce;
+    const r = document.createElement("style"), i = De.litNonce;
     i !== void 0 && r.setAttribute("nonce", i), r.textContent = t.cssText, n.appendChild(r);
   }
-}, wt = ht ? (n) => n : (n) => n instanceof CSSStyleSheet ? ((e) => {
+}, kt = pt ? (n) => n : (n) => n instanceof CSSStyleSheet ? ((e) => {
   let t = "";
   for (const r of e.cssRules) t += r.cssText;
-  return pr(t);
+  return gr(t);
 })(n) : n;
 /**
  * @license
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { is: gr, defineProperty: mr, getOwnPropertyDescriptor: fr, getOwnPropertyNames: br, getOwnPropertySymbols: vr, getPrototypeOf: yr } = Object, q = globalThis, kt = q.trustedTypes, $r = kt ? kt.emptyScript : "", Je = q.reactiveElementPolyfillSupport, we = (n, e) => n, st = { toAttribute(n, e) {
+const { is: fr, defineProperty: br, getOwnPropertyDescriptor: vr, getOwnPropertyNames: yr, getOwnPropertySymbols: $r, getPrototypeOf: xr } = Object, q = globalThis, St = q.trustedTypes, _r = St ? St.emptyScript : "", Je = q.reactiveElementPolyfillSupport, we = (n, e) => n, st = { toAttribute(n, e) {
   switch (e) {
     case Boolean:
-      n = n ? $r : null;
+      n = n ? _r : null;
       break;
     case Object:
     case Array:
@@ -73,7 +73,7 @@ const { is: gr, defineProperty: mr, getOwnPropertyDescriptor: fr, getOwnProperty
       }
   }
   return t;
-} }, Wt = (n, e) => !gr(n, e), St = { attribute: !0, type: String, converter: st, reflect: !1, useDefault: !1, hasChanged: Wt };
+} }, Xt = (n, e) => !fr(n, e), At = { attribute: !0, type: String, converter: st, reflect: !1, useDefault: !1, hasChanged: Xt };
 Symbol.metadata ?? (Symbol.metadata = Symbol("metadata")), q.litPropertyMetadata ?? (q.litPropertyMetadata = /* @__PURE__ */ new WeakMap());
 let he = class extends HTMLElement {
   static addInitializer(e) {
@@ -82,14 +82,14 @@ let he = class extends HTMLElement {
   static get observedAttributes() {
     return this.finalize(), this._$Eh && [...this._$Eh.keys()];
   }
-  static createProperty(e, t = St) {
+  static createProperty(e, t = At) {
     if (t.state && (t.attribute = !1), this._$Ei(), this.prototype.hasOwnProperty(e) && ((t = Object.create(t)).wrapped = !0), this.elementProperties.set(e, t), !t.noAccessor) {
       const r = Symbol(), i = this.getPropertyDescriptor(e, r, t);
-      i !== void 0 && mr(this.prototype, e, i);
+      i !== void 0 && br(this.prototype, e, i);
     }
   }
   static getPropertyDescriptor(e, t, r) {
-    const { get: i, set: s } = fr(this.prototype, e) ?? { get() {
+    const { get: i, set: s } = vr(this.prototype, e) ?? { get() {
       return this[t];
     }, set(o) {
       this[t] = o;
@@ -100,17 +100,17 @@ let he = class extends HTMLElement {
     }, configurable: !0, enumerable: !0 };
   }
   static getPropertyOptions(e) {
-    return this.elementProperties.get(e) ?? St;
+    return this.elementProperties.get(e) ?? At;
   }
   static _$Ei() {
     if (this.hasOwnProperty(we("elementProperties"))) return;
-    const e = yr(this);
+    const e = xr(this);
     e.finalize(), e.l !== void 0 && (this.l = [...e.l]), this.elementProperties = new Map(e.elementProperties);
   }
   static finalize() {
     if (this.hasOwnProperty(we("finalized"))) return;
     if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(we("properties"))) {
-      const t = this.properties, r = [...br(t), ...vr(t)];
+      const t = this.properties, r = [...yr(t), ...$r(t)];
       for (const i of r) this.createProperty(i, t[i]);
     }
     const e = this[Symbol.metadata];
@@ -129,8 +129,8 @@ let he = class extends HTMLElement {
     const t = [];
     if (Array.isArray(e)) {
       const r = new Set(e.flat(1 / 0).reverse());
-      for (const i of r) t.unshift(wt(i));
-    } else e !== void 0 && t.push(wt(e));
+      for (const i of r) t.unshift(kt(i));
+    } else e !== void 0 && t.push(kt(e));
     return t;
   }
   static _$Eu(e, t) {
@@ -159,7 +159,7 @@ let he = class extends HTMLElement {
   }
   createRenderRoot() {
     const e = this.shadowRoot ?? this.attachShadow(this.constructor.shadowRootOptions);
-    return ur(e, this.constructor.elementStyles), e;
+    return mr(e, this.constructor.elementStyles), e;
   }
   connectedCallback() {
     var e;
@@ -202,7 +202,7 @@ let he = class extends HTMLElement {
     var o;
     if (e !== void 0) {
       const a = this.constructor;
-      if (i === !1 && (s = this[e]), r ?? (r = a.getPropertyOptions(e)), !((r.hasChanged ?? Wt)(s, t) || r.useDefault && r.reflect && s === ((o = this._$Ej) == null ? void 0 : o.get(e)) && !this.hasAttribute(a._$Eu(e, r)))) return;
+      if (i === !1 && (s = this[e]), r ?? (r = a.getPropertyOptions(e)), !((r.hasChanged ?? Xt)(s, t) || r.useDefault && r.reflect && s === ((o = this._$Ej) == null ? void 0 : o.get(e)) && !this.hasAttribute(a._$Eu(e, r)))) return;
       this.C(e, t, r);
     }
     this.isUpdatePending === !1 && (this._$ES = this._$EP());
@@ -284,50 +284,50 @@ he.elementStyles = [], he.shadowRootOptions = { mode: "open" }, he[we("elementPr
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ke = globalThis, At = (n) => n, De = ke.trustedTypes, Et = De ? De.createPolicy("lit-html", { createHTML: (n) => n }) : void 0, Gt = "$lit$", Y = `lit$${Math.random().toFixed(9).slice(2)}$`, Xt = "?" + Y, xr = `<${Xt}>`, oe = document, Se = () => oe.createComment(""), Ae = (n) => n === null || typeof n != "object" && typeof n != "function", ut = Array.isArray, _r = (n) => ut(n) || typeof (n == null ? void 0 : n[Symbol.iterator]) == "function", Qe = `[ 	
-\f\r]`, ye = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Mt = /-->/g, Ct = />/g, te = RegExp(`>|${Qe}(?:([^\\s"'>=/]+)(${Qe}*=${Qe}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), Pt = /'/g, Ot = /"/g, Yt = /^(?:script|style|textarea|title)$/i, qt = (n) => (e, ...t) => ({ _$litType$: n, strings: e, values: t }), l = qt(1), O = qt(2), ue = Symbol.for("lit-noChange"), h = Symbol.for("lit-nothing"), Lt = /* @__PURE__ */ new WeakMap(), ie = oe.createTreeWalker(oe, 129);
-function Kt(n, e) {
-  if (!ut(n) || !n.hasOwnProperty("raw")) throw Error("invalid template strings array");
-  return Et !== void 0 ? Et.createHTML(e) : e;
+const ke = globalThis, Et = (n) => n, Ue = ke.trustedTypes, Mt = Ue ? Ue.createPolicy("lit-html", { createHTML: (n) => n }) : void 0, Yt = "$lit$", Y = `lit$${Math.random().toFixed(9).slice(2)}$`, qt = "?" + Y, wr = `<${qt}>`, oe = document, Se = () => oe.createComment(""), Ae = (n) => n === null || typeof n != "object" && typeof n != "function", gt = Array.isArray, kr = (n) => gt(n) || typeof (n == null ? void 0 : n[Symbol.iterator]) == "function", Qe = `[ 	
+\f\r]`, ye = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Ct = /-->/g, Pt = />/g, te = RegExp(`>|${Qe}(?:([^\\s"'>=/]+)(${Qe}*=${Qe}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`, "g"), Ot = /'/g, Lt = /"/g, Kt = /^(?:script|style|textarea|title)$/i, Zt = (n) => (e, ...t) => ({ _$litType$: n, strings: e, values: t }), l = Zt(1), O = Zt(2), ue = Symbol.for("lit-noChange"), h = Symbol.for("lit-nothing"), zt = /* @__PURE__ */ new WeakMap(), ie = oe.createTreeWalker(oe, 129);
+function Jt(n, e) {
+  if (!gt(n) || !n.hasOwnProperty("raw")) throw Error("invalid template strings array");
+  return Mt !== void 0 ? Mt.createHTML(e) : e;
 }
-const wr = (n, e) => {
+const Sr = (n, e) => {
   const t = n.length - 1, r = [];
   let i, s = e === 2 ? "<svg>" : e === 3 ? "<math>" : "", o = ye;
   for (let a = 0; a < t; a++) {
     const c = n[a];
     let d, g, u = -1, y = 0;
-    for (; y < c.length && (o.lastIndex = y, g = o.exec(c), g !== null); ) y = o.lastIndex, o === ye ? g[1] === "!--" ? o = Mt : g[1] !== void 0 ? o = Ct : g[2] !== void 0 ? (Yt.test(g[2]) && (i = RegExp("</" + g[2], "g")), o = te) : g[3] !== void 0 && (o = te) : o === te ? g[0] === ">" ? (o = i ?? ye, u = -1) : g[1] === void 0 ? u = -2 : (u = o.lastIndex - g[2].length, d = g[1], o = g[3] === void 0 ? te : g[3] === '"' ? Ot : Pt) : o === Ot || o === Pt ? o = te : o === Mt || o === Ct ? o = ye : (o = te, i = void 0);
+    for (; y < c.length && (o.lastIndex = y, g = o.exec(c), g !== null); ) y = o.lastIndex, o === ye ? g[1] === "!--" ? o = Ct : g[1] !== void 0 ? o = Pt : g[2] !== void 0 ? (Kt.test(g[2]) && (i = RegExp("</" + g[2], "g")), o = te) : g[3] !== void 0 && (o = te) : o === te ? g[0] === ">" ? (o = i ?? ye, u = -1) : g[1] === void 0 ? u = -2 : (u = o.lastIndex - g[2].length, d = g[1], o = g[3] === void 0 ? te : g[3] === '"' ? Lt : Ot) : o === Lt || o === Ot ? o = te : o === Ct || o === Pt ? o = ye : (o = te, i = void 0);
     const x = o === te && n[a + 1].startsWith("/>") ? " " : "";
-    s += o === ye ? c + xr : u >= 0 ? (r.push(d), c.slice(0, u) + Gt + c.slice(u) + Y + x) : c + Y + (u === -2 ? a : x);
+    s += o === ye ? c + wr : u >= 0 ? (r.push(d), c.slice(0, u) + Yt + c.slice(u) + Y + x) : c + Y + (u === -2 ? a : x);
   }
-  return [Kt(n, s + (n[t] || "<?>") + (e === 2 ? "</svg>" : e === 3 ? "</math>" : "")), r];
+  return [Jt(n, s + (n[t] || "<?>") + (e === 2 ? "</svg>" : e === 3 ? "</math>" : "")), r];
 };
 class Ee {
   constructor({ strings: e, _$litType$: t }, r) {
     let i;
     this.parts = [];
     let s = 0, o = 0;
-    const a = e.length - 1, c = this.parts, [d, g] = wr(e, t);
+    const a = e.length - 1, c = this.parts, [d, g] = Sr(e, t);
     if (this.el = Ee.createElement(d, r), ie.currentNode = this.el.content, t === 2 || t === 3) {
       const u = this.el.content.firstChild;
       u.replaceWith(...u.childNodes);
     }
     for (; (i = ie.nextNode()) !== null && c.length < a; ) {
       if (i.nodeType === 1) {
-        if (i.hasAttributes()) for (const u of i.getAttributeNames()) if (u.endsWith(Gt)) {
+        if (i.hasAttributes()) for (const u of i.getAttributeNames()) if (u.endsWith(Yt)) {
           const y = g[o++], x = i.getAttribute(u).split(Y), w = /([.?@])?(.*)/.exec(y);
-          c.push({ type: 1, index: s, name: w[2], strings: x, ctor: w[1] === "." ? Sr : w[1] === "?" ? Ar : w[1] === "@" ? Er : Ge }), i.removeAttribute(u);
+          c.push({ type: 1, index: s, name: w[2], strings: x, ctor: w[1] === "." ? Er : w[1] === "?" ? Mr : w[1] === "@" ? Cr : Ge }), i.removeAttribute(u);
         } else u.startsWith(Y) && (c.push({ type: 6, index: s }), i.removeAttribute(u));
-        if (Yt.test(i.tagName)) {
+        if (Kt.test(i.tagName)) {
           const u = i.textContent.split(Y), y = u.length - 1;
           if (y > 0) {
-            i.textContent = De ? De.emptyScript : "";
+            i.textContent = Ue ? Ue.emptyScript : "";
             for (let x = 0; x < y; x++) i.append(u[x], Se()), ie.nextNode(), c.push({ type: 2, index: ++s });
             i.append(u[y], Se());
           }
         }
-      } else if (i.nodeType === 8) if (i.data === Xt) c.push({ type: 2, index: s });
+      } else if (i.nodeType === 8) if (i.data === qt) c.push({ type: 2, index: s });
       else {
         let u = -1;
         for (; (u = i.data.indexOf(Y, u + 1)) !== -1; ) c.push({ type: 7, index: s }), u += Y.length - 1;
@@ -347,7 +347,7 @@ function ge(n, e, t = n, r) {
   const s = Ae(e) ? void 0 : e._$litDirective$;
   return (i == null ? void 0 : i.constructor) !== s && ((a = i == null ? void 0 : i._$AO) == null || a.call(i, !1), s === void 0 ? i = void 0 : (i = new s(n), i._$AT(n, t, r)), r !== void 0 ? (t._$Co ?? (t._$Co = []))[r] = i : t._$Cl = i), i !== void 0 && (e = ge(n, i._$AS(n, e.values), i, r)), e;
 }
-class kr {
+class Ar {
   constructor(e, t) {
     this._$AV = [], this._$AN = void 0, this._$AD = e, this._$AM = t;
   }
@@ -364,7 +364,7 @@ class kr {
     for (; c !== void 0; ) {
       if (o === c.index) {
         let d;
-        c.type === 2 ? d = new Me(s, s.nextSibling, this, e) : c.type === 1 ? d = new c.ctor(s, c.name, c.strings, this, e) : c.type === 6 && (d = new Mr(s, this, e)), this._$AV.push(d), c = r[++a];
+        c.type === 2 ? d = new Me(s, s.nextSibling, this, e) : c.type === 1 ? d = new c.ctor(s, c.name, c.strings, this, e) : c.type === 6 && (d = new Pr(s, this, e)), this._$AV.push(d), c = r[++a];
       }
       o !== (c == null ? void 0 : c.index) && (s = ie.nextNode(), o++);
     }
@@ -395,7 +395,7 @@ class Me {
     return this._$AB;
   }
   _$AI(e, t = this) {
-    e = ge(this, e, t), Ae(e) ? e === h || e == null || e === "" ? (this._$AH !== h && this._$AR(), this._$AH = h) : e !== this._$AH && e !== ue && this._(e) : e._$litType$ !== void 0 ? this.$(e) : e.nodeType !== void 0 ? this.T(e) : _r(e) ? this.k(e) : this._(e);
+    e = ge(this, e, t), Ae(e) ? e === h || e == null || e === "" ? (this._$AH !== h && this._$AR(), this._$AH = h) : e !== this._$AH && e !== ue && this._(e) : e._$litType$ !== void 0 ? this.$(e) : e.nodeType !== void 0 ? this.T(e) : kr(e) ? this.k(e) : this._(e);
   }
   O(e) {
     return this._$AA.parentNode.insertBefore(e, this._$AB);
@@ -408,19 +408,19 @@ class Me {
   }
   $(e) {
     var s;
-    const { values: t, _$litType$: r } = e, i = typeof r == "number" ? this._$AC(e) : (r.el === void 0 && (r.el = Ee.createElement(Kt(r.h, r.h[0]), this.options)), r);
+    const { values: t, _$litType$: r } = e, i = typeof r == "number" ? this._$AC(e) : (r.el === void 0 && (r.el = Ee.createElement(Jt(r.h, r.h[0]), this.options)), r);
     if (((s = this._$AH) == null ? void 0 : s._$AD) === i) this._$AH.p(t);
     else {
-      const o = new kr(i, this), a = o.u(this.options);
+      const o = new Ar(i, this), a = o.u(this.options);
       o.p(t), this.T(a), this._$AH = o;
     }
   }
   _$AC(e) {
-    let t = Lt.get(e.strings);
-    return t === void 0 && Lt.set(e.strings, t = new Ee(e)), t;
+    let t = zt.get(e.strings);
+    return t === void 0 && zt.set(e.strings, t = new Ee(e)), t;
   }
   k(e) {
-    ut(this._$AH) || (this._$AH = [], this._$AR());
+    gt(this._$AH) || (this._$AH = [], this._$AR());
     const t = this._$AH;
     let r, i = 0;
     for (const s of e) i === t.length ? t.push(r = new Me(this.O(Se()), this.O(Se()), this, this.options)) : r = t[i], r._$AI(s), i++;
@@ -429,8 +429,8 @@ class Me {
   _$AR(e = this._$AA.nextSibling, t) {
     var r;
     for ((r = this._$AP) == null ? void 0 : r.call(this, !1, !0, t); e !== this._$AB; ) {
-      const i = At(e).nextSibling;
-      At(e).remove(), e = i;
+      const i = Et(e).nextSibling;
+      Et(e).remove(), e = i;
     }
   }
   setConnected(e) {
@@ -463,7 +463,7 @@ class Ge {
     e === h ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
   }
 }
-class Sr extends Ge {
+class Er extends Ge {
   constructor() {
     super(...arguments), this.type = 3;
   }
@@ -471,7 +471,7 @@ class Sr extends Ge {
     this.element[this.name] = e === h ? void 0 : e;
   }
 }
-class Ar extends Ge {
+class Mr extends Ge {
   constructor() {
     super(...arguments), this.type = 4;
   }
@@ -479,7 +479,7 @@ class Ar extends Ge {
     this.element.toggleAttribute(this.name, !!e && e !== h);
   }
 }
-class Er extends Ge {
+class Cr extends Ge {
   constructor(e, t, r, i, s) {
     super(e, t, r, i, s), this.type = 5;
   }
@@ -493,7 +493,7 @@ class Er extends Ge {
     typeof this._$AH == "function" ? this._$AH.call(((t = this.options) == null ? void 0 : t.host) ?? this.element, e) : this._$AH.handleEvent(e);
   }
 }
-class Mr {
+class Pr {
   constructor(e, t, r) {
     this.element = e, this.type = 6, this._$AN = void 0, this._$AM = t, this.options = r;
   }
@@ -506,7 +506,7 @@ class Mr {
 }
 const et = ke.litHtmlPolyfillSupport;
 et == null || et(Ee, Me), (ke.litHtmlVersions ?? (ke.litHtmlVersions = [])).push("3.3.3");
-const Cr = (n, e, t) => {
+const Or = (n, e, t) => {
   const r = (t == null ? void 0 : t.renderBefore) ?? e;
   let i = r._$litPart$;
   if (i === void 0) {
@@ -532,7 +532,7 @@ class pe extends he {
   }
   update(e) {
     const t = this.render();
-    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = Cr(t, this.renderRoot, this.renderOptions);
+    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = Or(t, this.renderRoot, this.renderOptions);
   }
   connectedCallback() {
     var e;
@@ -546,12 +546,12 @@ class pe extends he {
     return ue;
   }
 }
-var Vt;
-pe._$litElement$ = !0, pe.finalized = !0, (Vt = se.litElementHydrateSupport) == null || Vt.call(se, { LitElement: pe });
+var Wt;
+pe._$litElement$ = !0, pe.finalized = !0, (Wt = se.litElementHydrateSupport) == null || Wt.call(se, { LitElement: pe });
 const tt = se.litElementPolyfillSupport;
 tt == null || tt({ LitElement: pe });
 (se.litElementVersions ?? (se.litElementVersions = [])).push("4.2.2");
-const Pr = {
+const Lr = {
   sensor: ["sensor", "input_number"],
   binary_sensor: ["binary_sensor", "input_boolean"],
   select: ["select", "input_select"],
@@ -588,7 +588,7 @@ const Be = [
     color: "var(--error-color, #db4437)",
     description: "Charges at full power right away, from PV, battery and grid alike."
   }
-], Or = [
+], zr = [
   {
     key: "smart_pv",
     label: "PV surplus",
@@ -617,13 +617,13 @@ const Be = [
 function z(n, e = 55) {
   return `color-mix(in srgb, ${n} ${e}%, var(--card-background-color, #fff))`;
 }
-const zt = { kW: 1e3, MW: 1e6 };
+const Nt = { kW: 1e3, MW: 1e6 };
 function v(n) {
   if (!n) return;
   const e = Number(n.state);
   if (!Number.isFinite(e)) return;
   const t = n.attributes.unit_of_measurement;
-  return typeof t == "string" && t in zt ? e * zt[t] : e;
+  return typeof t == "string" && t in Nt ? e * Nt[t] : e;
 }
 function j(n) {
   return n === void 0 ? "–" : Math.abs(n) >= 1e3 ? `${(n / 1e3).toFixed(1)} kW` : `${Math.round(n)} W`;
@@ -631,30 +631,44 @@ function j(n) {
 function L(n) {
   return n === void 0 ? "–" : n.toFixed(3);
 }
-function Lr(n, e) {
-  var r;
-  const t = e.image_entity ? (r = n.states[e.image_entity]) == null ? void 0 : r.attributes.entity_picture : void 0;
-  return typeof t == "string" && t ? t : e.image || void 0;
+const Ht = 24 * 3600, ot = /* @__PURE__ */ new Map();
+function Nr(n, e, t) {
+  const r = ot.get(e);
+  if (r && Date.now() < r.until)
+    return r.url || r.waiting.add(t), r.url;
+  if (!n.callWS) return r == null ? void 0 : r.url;
+  const i = { url: r == null ? void 0 : r.url, until: Date.now() + 6e4, waiting: /* @__PURE__ */ new Set([t]) };
+  return ot.set(e, i), n.callWS({ type: "media_source/resolve_media", media_content_id: e, expires: Ht }).then((s) => {
+    i.url = s.url, i.until = Date.now() + (Ht - 600) * 1e3, i.waiting.forEach((o) => o()), i.waiting.clear();
+  }).catch((s) => console.warn(`Cannot resolve the car picture ${e}:`, s)), r == null ? void 0 : r.url;
 }
-function Zt(n, e) {
-  const t = e == null ? void 0 : e.attributes.vehicles;
-  if (!Array.isArray(t)) return [];
-  const r = (i) => i ? v(n.states[i]) : void 0;
-  return t.map((i, s) => {
-    const o = i.range_entity ? n.states[i.range_entity] : void 0;
+function Hr(n, e, t) {
+  var i, s;
+  const r = e.image_entity ? (i = n.states[e.image_entity]) == null ? void 0 : i.attributes.entity_picture : void 0;
+  if (typeof r == "string" && r) return r;
+  if (e.image) return e.image;
+  if (e.image_media)
+    return t ? Nr(n, e.image_media, t) : (s = ot.get(e.image_media)) == null ? void 0 : s.url;
+}
+function Qt(n, e, t) {
+  const r = e == null ? void 0 : e.attributes.vehicles;
+  if (!Array.isArray(r)) return [];
+  const i = (s) => s ? v(n.states[s]) : void 0;
+  return r.map((s, o) => {
+    const a = s.range_entity ? n.states[s.range_entity] : void 0;
     return {
-      name: i.name || `Vehicle ${s + 1}`,
-      connected: i.connected === !0,
-      soc: r(i.soc_entity),
-      target: r(i.target_soc_entity),
-      range: v(o),
-      rangeUnit: (o == null ? void 0 : o.attributes.unit_of_measurement) ?? "km",
-      image: Lr(n, i),
-      socEntity: i.soc_entity || void 0
+      name: s.name || `Vehicle ${o + 1}`,
+      connected: s.connected === !0,
+      soc: i(s.soc_entity),
+      target: i(s.target_soc_entity),
+      range: v(a),
+      rangeUnit: (a == null ? void 0 : a.attributes.unit_of_measurement) ?? "km",
+      image: Hr(n, s, t),
+      socEntity: s.soc_entity || void 0
     };
   });
 }
-const zr = 4e3, gt = class gt extends pe {
+const Tr = 4e3, mt = class mt extends pe {
   constructor() {
     super(...arguments), this._pending = /* @__PURE__ */ new Map();
   }
@@ -677,7 +691,7 @@ const zr = 4e3, gt = class gt extends pe {
   async setNumber(e, t) {
     var c;
     const r = this.entity("number", e), i = Number((r == null ? void 0 : r.attributes.min) ?? -1 / 0), s = Number((r == null ? void 0 : r.attributes.max) ?? 1 / 0), o = Math.min(s, Math.max(i, t));
-    this._pending.set(e, { value: o, until: Date.now() + zr }), this.requestUpdate();
+    this._pending.set(e, { value: o, until: Date.now() + Tr }), this.requestUpdate();
     const a = this.entityId("number", e);
     await ((c = this.hass) == null ? void 0 : c.callService(rt(a), "set_value", {
       entity_id: a,
@@ -719,11 +733,11 @@ const zr = 4e3, gt = class gt extends pe {
     </span>`;
   }
 };
-gt.properties = {
+mt.properties = {
   hass: { attribute: !1 },
   _config: { state: !0 }
 };
-let N = gt;
+let N = mt;
 const Xe = me`
   ha-card {
     padding: 14px 16px;
@@ -835,24 +849,24 @@ const Xe = me`
     }
   }
 `;
-async function Nr() {
+async function Ir() {
   var t, r, i;
   if (customElements.get("ha-form")) return;
   const n = await ((t = window.loadCardHelpers) == null ? void 0 : t.call(window)), e = await (n == null ? void 0 : n.createCardElement({ type: "entities", entities: [] }));
   await ((i = (r = e == null ? void 0 : e.constructor) == null ? void 0 : r.getConfigElement) == null ? void 0 : i.call(r));
 }
-function Hr(n) {
+function Rr(n) {
   return {
     type: "expandable",
     name: "entities",
     title: "Entities",
     schema: n.map((e) => ({
       name: e.key,
-      selector: { entity: { domain: Pr[e.domain] ?? [e.domain] } }
+      selector: { entity: { domain: Lr[e.domain] ?? [e.domain] } }
     }))
   };
 }
-function Tr(n, e) {
+function Dr(n, e) {
   const t = new Map(n.map((r) => [r.key, r]));
   return {
     label: (r) => {
@@ -866,7 +880,7 @@ function Tr(n, e) {
     }
   };
 }
-function Ir(n) {
+function Ur(n) {
   if (typeof n != "object" || n === null) return;
   const e = Object.entries(n).filter(
     (t) => typeof t[1] == "string" && t[1] !== ""
@@ -876,14 +890,14 @@ function Ir(n) {
 function Ce(n, e = []) {
   var i;
   const t = n.map(({ name: s, selector: o }) => ({ name: s, selector: o }));
-  e.length && t.push(Hr(e));
+  e.length && t.push(Rr(e));
   const r = Object.fromEntries(n.map((s) => [s.name, s.label]));
   return i = class extends pe {
     setConfig(o) {
       this._config = o;
     }
     connectedCallback() {
-      super.connectedCallback(), Nr().then(() => this.requestUpdate());
+      super.connectedCallback(), Ir().then(() => this.requestUpdate());
     }
     changed(o) {
       const a = { ...this._config };
@@ -891,14 +905,14 @@ function Ce(n, e = []) {
         const g = o.detail.value[d.name];
         g === void 0 || g === "" || g === !1 ? delete a[d.name] : a[d.name] = g;
       }
-      const c = Ir(o.detail.value.entities);
+      const c = Ur(o.detail.value.entities);
       c ? a.entities = c : delete a.entities, this._config = a, this.dispatchEvent(
         new CustomEvent("config-changed", { detail: { config: a }, bubbles: !0, composed: !0 })
       );
     }
     render() {
       if (!this.hass || !this._config) return h;
-      const o = Tr(e, this._config.prefix);
+      const o = Dr(e, this._config.prefix);
       return l`<ha-form
         .hass=${this.hass}
         .data=${this._config}
@@ -936,7 +950,7 @@ function Le(n, e, t) {
     documentationURL: "https://github.com/KarstenBade/ha-charging-coordinator"
   });
 }
-const Rr = [
+const Br = [
   { key: "charge_mode", domain: "select", label: "Charge mode" },
   { key: "smart_pv", domain: "switch", label: "Smart: PV surplus" },
   { key: "smart_price", domain: "switch", label: "Smart: cheap price" },
@@ -944,7 +958,7 @@ const Rr = [
   { key: "price", domain: "sensor", label: "Current price" },
   { key: "grid_charge_max_power", domain: "number", label: "Max grid power" },
   { key: "block_battery_on_cheap_price", domain: "switch", label: "Battery hold at a cheap price" }
-], Nt = 0.01, Ur = 500, mt = class mt extends N {
+], Tt = 0.01, Fr = 500, ft = class ft extends N {
   getCardSize() {
     var e;
     return (e = this._config) != null && e.compact ? 2 : 5;
@@ -991,7 +1005,7 @@ const Rr = [
   /** The sources of smart mode as switches; the whole row (or pill) is the control. */
   renderSources(e) {
     return l`<div class=${e ? "tray" : "sources"}>
-      ${Or.map((t) => {
+      ${zr.map((t) => {
       const r = this.sourceOn(t.key);
       return l`<button
           class="source"
@@ -1034,7 +1048,7 @@ const Rr = [
           <span class="value">${L(t)}</span>
           ${this.renderStepper(
       "Price limit",
-      (o) => t === void 0 ? void 0 : this.setNumber("price_threshold", Ht(t + o * Nt))
+      (o) => t === void 0 ? void 0 : this.setNumber("price_threshold", It(t + o * Tt))
     )}
         </div>
       </div>
@@ -1068,7 +1082,7 @@ const Rr = [
           <span class="value">${e === void 0 ? "–" : `${(e / 1e3).toFixed(1)} kW`}</span>
           ${this.renderStepper(
       "Max grid power",
-      (t) => e === void 0 ? void 0 : this.setNumber("grid_charge_max_power", e + t * Ur)
+      (t) => e === void 0 ? void 0 : this.setNumber("grid_charge_max_power", e + t * Fr)
     )}
         </div>
       </div>
@@ -1095,7 +1109,7 @@ const Rr = [
       <span class="value">${L(e)}</span>
       ${this.renderStepper(
       "Price limit",
-      (i) => e === void 0 ? void 0 : this.setNumber("price_threshold", Ht(e + i * Nt))
+      (i) => e === void 0 ? void 0 : this.setNumber("price_threshold", It(e + i * Tt))
     )}
       ${t === void 0 ? h : l`<span class="pill ${r ? "good" : ""}" title="Current price">
             <ha-icon .icon=${r ? "mdi:cash-check" : "mdi:cash"}></ha-icon>now
@@ -1104,7 +1118,7 @@ const Rr = [
     </div>`;
   }
 };
-mt.styles = [
+ft.styles = [
   Xe,
   me`
       .modes {
@@ -1373,8 +1387,8 @@ mt.styles = [
       }
     `
 ];
-let ot = mt;
-function Ht(n) {
+let nt = ft;
+function It(n) {
   return Math.round(n * 1e3) / 1e3;
 }
 H(
@@ -1383,19 +1397,19 @@ H(
     Pe,
     { name: "compact", label: "Compact (no explanations)", selector: { boolean: {} } },
     Oe
-  ], Rr)
+  ], Br)
 );
-H("charging-coordinator-control-card", ot);
+H("charging-coordinator-control-card", nt);
 Le(
   "charging-coordinator-control-card",
   "Charging Coordinator control",
   "Charge mode, smart mode sources and price limit, optionally compact"
 );
-const Tt = [
+const Rt = [
   { key: "priority_soc", name: "Battery first below" },
   { key: "buffer_soc", name: "May keep a charge going above" },
   { key: "buffer_start_soc", name: "May start a charge from" }
-], Dr = [
+], Vr = [
   { key: "battery_soc", domain: "sensor", label: "Battery state of charge" },
   { key: "battery_power", domain: "sensor", label: "Battery power (+ discharge, - charge)" },
   { key: "battery_hold", domain: "binary_sensor", label: "Battery hold" },
@@ -1404,13 +1418,13 @@ const Tt = [
   { key: "buffer_start_soc", domain: "number", label: "May start a charge from (%)" },
   { key: "block_battery_on_ev_grid_charge", domain: "switch", label: "Hold while the car charges from the grid" },
   { key: "block_battery_on_cheap_price", domain: "switch", label: "Hold at a cheap price" }
-], It = {
+], Dt = {
   battery: z(f.batteryIn, 45),
   car: z(f.home, 25),
   keep: z(f.batteryOut, 30),
   start: z(f.batteryOut, 60)
-}, Rt = 30;
-function Ut(n, e) {
+}, Ut = 30;
+function Bt(n, e) {
   return n < e.priority_soc ? "battery" : e.buffer_start_soc > 0 && n >= e.buffer_start_soc ? "start" : e.buffer_soc > 0 && n > e.buffer_soc ? "keep" : "car";
 }
 const Ve = class Ve extends N {
@@ -1437,9 +1451,9 @@ const Ve = class Ve extends N {
     var o;
     if (!this.hass || !this._config) return h;
     if (!this.entity("number", "priority_soc")) return this.renderMissing("priority_soc");
-    const e = v(this.entity("sensor", "battery_soc")), t = v(this.entity("sensor", "battery_power")), r = ((o = this.entity("binary_sensor", "battery_hold")) == null ? void 0 : o.state) === "on", i = Object.fromEntries(Tt.map((a) => [a.key, this.level(a.key)]));
+    const e = v(this.entity("sensor", "battery_soc")), t = v(this.entity("sensor", "battery_power")), r = ((o = this.entity("binary_sensor", "battery_hold")) == null ? void 0 : o.state) === "on", i = Object.fromEntries(Rt.map((a) => [a.key, this.level(a.key)]));
     let s;
-    return r ? s = "On hold, not discharging" : (t ?? 0) < -Rt ? s = `Charging · ${j(-(t ?? 0))}` : (t ?? 0) > Rt ? s = `Discharging · ${j(t)}` : s = t === void 0 ? "–" : "Idle", l`<ha-card>
+    return r ? s = "On hold, not discharging" : (t ?? 0) < -Ut ? s = `Charging · ${j(-(t ?? 0))}` : (t ?? 0) > Ut ? s = `Discharging · ${j(t)}` : s = t === void 0 ? "–" : "Idle", l`<ha-card>
       ${this._config.title ? l`<div class="title">${this._config.title}</div>` : h}
       <div class="spread">
         <div>
@@ -1466,16 +1480,16 @@ const Ve = class Ve extends N {
     const r = [0, 100, ...Object.values(e)].map((s) => Math.min(100, Math.max(0, s))).sort((s, o) => s - o).filter((s, o, a) => o === 0 || s !== a[o - 1]), i = r.slice(0, -1).map((s, o) => ({
       from: s,
       to: r[o + 1],
-      zone: Ut((s + r[o + 1]) / 2, e)
+      zone: Bt((s + r[o + 1]) / 2, e)
     }));
     return l`<div class="scale">
       <div class="zones" @pointerdown=${(s) => s.preventDefault()}>
         ${i.map(
-      (s) => l`<div style="left: ${s.from}%; width: ${s.to - s.from}%; background: ${It[s.zone]}"></div>`
+      (s) => l`<div style="left: ${s.from}%; width: ${s.to - s.from}%; background: ${Dt[s.zone]}"></div>`
     )}
       </div>
       ${t === void 0 ? h : l`<div class="soc" style="left: ${Math.min(100, Math.max(0, t))}%" title="Now ${Math.round(t)} %"></div>`}
-      ${Tt.map((s) => this.renderMarker(s.key, s.name, e[s.key]))}
+      ${Rt.map((s) => this.renderMarker(s.key, s.name, e[s.key]))}
     </div>`;
   }
   renderMarker(e, t, r) {
@@ -1531,10 +1545,10 @@ const Ve = class Ve extends N {
     s.push(
       t > 0 ? ["battery", `Below ${t} %, PV charges the battery before the car.`] : ["car", "PV always goes to the car before the battery."]
     );
-    const o = [...Array(100).keys()].some((a) => Ut(a + 0.5, e) === "car");
+    const o = [...Array(100).keys()].some((a) => Bt(a + 0.5, e) === "car");
     return t > 0 && o && s.push(["car", "In the grey range, PV goes to the car first and the battery doesn't help."]), r > 0 && s.push(["keep", `Above ${r} %, the battery may keep a running charge going.`]), i > 0 && s.push(["start", `From ${i} %, the battery may start a charge.`]), r <= 0 && i <= 0 && s.push(["car", "The battery never helps charge the car."]), l`<ul class="legend">
       ${s.map(
-      ([a, c]) => l`<li><i style="background: ${It[a]}"></i><span>${c}</span></li>`
+      ([a, c]) => l`<li><i style="background: ${Dt[a]}"></i><span>${c}</span></li>`
     )}
     </ul>
     <div class="hint drag-hint">Drag a marker to change it; at 0 % it is off.</div>`;
@@ -1671,21 +1685,21 @@ Ve.properties = {
       }
     `
 ];
-let nt = Ve;
-H("charging-coordinator-battery-card-editor", Ce([Pe, Oe], Dr));
-H("charging-coordinator-battery-card", nt);
+let at = Ve;
+H("charging-coordinator-battery-card-editor", Ce([Pe, Oe], Vr));
+H("charging-coordinator-battery-card", at);
 Le(
   "charging-coordinator-battery-card",
   "Charging Coordinator battery",
   "When the home battery comes before the car, and the battery hold switches"
 );
-const Br = [
+const jr = [
   { key: "price", domain: "sensor", label: "Current price" },
   { key: "price_threshold", domain: "number", label: "Price limit" },
   // defaults to the sensor named in the price sensor's `source` attribute
   { key: "price_forecast", domain: "forecast", label: "Sensor with the price forecast" }
-], Fe = 36e5, P = 24 * Fe, Fr = 0.01, Vr = 5 * 6e4, jr = ["start", "start_time", "startsAt", "starts_at", "time", "from", "datetime", "hour"], Wr = ["end", "end_time", "endsAt", "ends_at", "till", "to"], Gr = ["value", "price", "total", "price_per_kwh", "price_eur_per_kwh", "marketprice"];
-function at(n) {
+], Fe = 36e5, P = 24 * Fe, Wr = 0.01, Gr = 5 * 6e4, Xr = ["start", "start_time", "startsAt", "starts_at", "time", "from", "datetime", "hour"], Yr = ["end", "end_time", "endsAt", "ends_at", "till", "to"], qr = ["value", "price", "total", "price_per_kwh", "price_eur_per_kwh", "marketprice"];
+function ct(n) {
   if (typeof n == "number") return n < 1e12 ? n * 1e3 : n;
   if (typeof n != "string") return;
   const e = Date.parse(n);
@@ -1694,7 +1708,7 @@ function at(n) {
 function it(n, e) {
   for (const t of e) if (n[t] !== void 0 && n[t] !== null) return n[t];
 }
-function Xr(n) {
+function Kr(n) {
   const e = /* @__PURE__ */ new Map(), t = (r, i, s) => {
     e.has(r) || e.set(r, { start: r, end: i ?? NaN, price: s });
   };
@@ -1709,13 +1723,13 @@ function Xr(n) {
       }
       for (const s of i) {
         if (typeof s != "object" || s === null) continue;
-        const o = s, a = at(it(o, jr)), c = Number(it(o, Gr));
-        a === void 0 || !Number.isFinite(c) || t(a, at(it(o, Wr)), c);
+        const o = s, a = ct(it(o, Xr)), c = Number(it(o, qr));
+        a === void 0 || !Number.isFinite(c) || t(a, ct(it(o, Yr)), c);
       }
     }
-  return Jt([...e.values()]);
+  return er([...e.values()]);
 }
-function Jt(n) {
+function er(n) {
   const e = n.sort((i, s) => i.start - s.start), t = e.slice(1).map((i, s) => i.start - e[s].start).filter((i) => i > 0), r = t.length ? Math.min(...t) : Fe;
   return e.map((i, s) => {
     var o;
@@ -1725,7 +1739,7 @@ function Jt(n) {
     };
   });
 }
-async function Yr(n, e) {
+async function Zr(n, e) {
   if (!n.callWS) return [];
   const t = (/* @__PURE__ */ new Date()).setHours(0, 0, 0, 0), r = await n.callWS({
     type: "history/history_during_period",
@@ -1735,16 +1749,16 @@ async function Yr(n, e) {
     no_attributes: !0
   }), i = [];
   for (const o of r[e] ?? []) {
-    const a = Number(o.s ?? o.state), c = at(o.lu ?? o.lc ?? o.last_updated ?? o.last_changed);
+    const a = Number(o.s ?? o.state), c = ct(o.lu ?? o.lc ?? o.last_updated ?? o.last_changed);
     c === void 0 || !Number.isFinite(a) || i.push({ start: Math.max(c, t), end: NaN, price: a });
   }
-  const s = Jt(i);
+  const s = er(i);
   return s.length && (s[s.length - 1].end = Date.now()), s;
 }
-function Dt(n) {
+function Ft(n) {
   return new Date(n).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
-function qr(n) {
+function Jr(n) {
   const e = Math.round(n / 6e4);
   if (e < 60) return `${e} min`;
   const t = Math.floor(e / 60), r = e % 60;
@@ -1769,10 +1783,10 @@ const je = class je extends N {
   forecast() {
     var r, i, s, o;
     const e = ((i = (r = this._config) == null ? void 0 : r.entities) == null ? void 0 : i.price_forecast) || ((s = this.entity("sensor", "price")) == null ? void 0 : s.attributes.source), t = typeof e == "string" ? (o = this.hass) == null ? void 0 : o.states[e] : void 0;
-    return t ? Xr(t.attributes) : [];
+    return t ? Kr(t.attributes) : [];
   }
   maybeLoadHistory() {
-    !this.hass || this._historyLoading || Date.now() - this._historyAt < Vr || (this._historyLoading = !0, Yr(this.hass, this.entityId("sensor", "price")).then((e) => this._history = e).catch((e) => console.warn("Loading price history failed", e)).finally(() => {
+    !this.hass || this._historyLoading || Date.now() - this._historyAt < Gr || (this._historyLoading = !0, Zr(this.hass, this.entityId("sensor", "price")).then((e) => this._history = e).catch((e) => console.warn("Loading price history failed", e)).finally(() => {
       this._historyAt = Date.now(), this._historyLoading = !1;
     }));
   }
@@ -1795,7 +1809,7 @@ const je = class je extends N {
           <span class="value" title="Price limit">${L(e)}</span>
           ${this.renderStepper(
       "Price limit",
-      (d) => e === void 0 ? void 0 : this.setNumber("price_threshold", Math.round((e + d * Fr) * 1e3) / 1e3)
+      (d) => e === void 0 ? void 0 : this.setNumber("price_threshold", Math.round((e + d * Wr) * 1e3) / 1e3)
     )}
         </div>
       </div>
@@ -1813,16 +1827,16 @@ const je = class je extends N {
     if (!o) return "No upcoming price at or below your limit";
     let a = o.end;
     for (const c of e) c.start === a && c.price <= t && (a = c.end);
-    return `At or below your limit from ${Dt(o.start)}, for ${qr(a - o.start)}`;
+    return `At or below your limit from ${Ft(o.start)}, for ${Jr(a - o.start)}`;
   }
   renderChart(e, t, r, i, s) {
     const c = e.map((m) => m.price).concat(t === void 0 ? [] : [t]), d = Math.max(...c), g = Math.min(...c), u = g < 0 ? g : Math.max(0, g - (d - g) * 0.5 - 0.01), y = d + (d - u) * 0.08, x = g < 0 ? 0 : u, w = (m) => (m - r) / (i - r) * 388, _ = (m) => 110 - (m - u) / (y - u) * 110, ze = z(f.charger, 70), K = z(f.home, 35), ne = e.map((m) => {
-      const k = w(Math.max(m.start, r)), W = w(Math.min(m.end, i)), Z = Math.max(0.5, W - k - (W - k > 3 ? 1 : 0)), R = Math.min(_(m.price), _(x)), J = Math.max(1, Math.abs(_(m.price) - _(x))), ae = t !== void 0 && m.price <= t, U = m.start <= s && s < m.end;
-      return O`<rect class="bar ${m.end <= s ? "past" : ""} ${U ? "current" : ""}"
+      const k = w(Math.max(m.start, r)), W = w(Math.min(m.end, i)), Z = Math.max(0.5, W - k - (W - k > 3 ? 1 : 0)), R = Math.min(_(m.price), _(x)), J = Math.max(1, Math.abs(_(m.price) - _(x))), ae = t !== void 0 && m.price <= t, D = m.start <= s && s < m.end;
+      return O`<rect class="bar ${m.end <= s ? "past" : ""} ${D ? "current" : ""}"
         x=${k} y=${R} width=${Z} height=${J} rx="1.5"
         style="fill: ${ae ? ze : K}"
         @click=${() => this.setNumber("price_threshold", Math.round(m.price * 1e3) / 1e3)}>
-        <title>${Dt(m.start)} · ${L(m.price)} · tap to use as limit</title>
+        <title>${Ft(m.start)} · ${L(m.price)} · tap to use as limit</title>
       </rect>`;
     }), T = i - r, Ye = T > P ? 12 * Fe : 6 * Fe, I = [];
     for (let m = r; m <= i; m += Ye) {
@@ -1920,23 +1934,23 @@ je.properties = {
       }
     `
 ];
-let ct = je;
-H("charging-coordinator-price-card-editor", Ce([Pe, Oe], Br));
-H("charging-coordinator-price-card", ct);
+let lt = je;
+H("charging-coordinator-price-card-editor", Ce([Pe, Oe], jr));
+H("charging-coordinator-price-card", lt);
 Le(
   "charging-coordinator-price-card",
   "Charging Coordinator prices",
   "Today's prices against the price limit"
 );
-const Qt = [
+const tr = [
   { value: "tiles", label: "Tiles: one tile per car" },
   { value: "rows", label: "Rows: one compact row per car" },
   { value: "spotlight", label: "Spotlight: the connected car large" }
-], Kr = [
+], Qr = [
   { key: "connected_vehicle", domain: "sensor", label: "Connected vehicle (lists the cars)" },
   { key: "vehicle_connected", domain: "binary_sensor", label: "Cable at the charger" },
   { key: "charger_power", domain: "sensor", label: "Charger power" }
-], Zr = 100, ft = class ft extends N {
+], ei = 100, bt = class bt extends N {
   getCardSize() {
     var e;
     return ((e = this._config) == null ? void 0 : e.layout) === "rows" ? 2 : 3;
@@ -1951,15 +1965,19 @@ const Qt = [
     return document.createElement("charging-coordinator-vehicle-card-editor");
   }
   setConfig(e) {
-    if (e.layout !== void 0 && !Qt.some((t) => t.value === e.layout))
+    if (e.layout !== void 0 && !tr.some((t) => t.value === e.layout))
       throw new Error("layout must be tiles, rows or spotlight");
     super.setConfig(e);
   }
   cars() {
     var r;
     if (!this.hass) return [];
-    const e = ((r = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : r.state) !== "off", t = (v(this.entity("sensor", "charger_power")) ?? 0) >= Zr;
-    return Zt(this.hass, this.entity("sensor", "connected_vehicle")).map((i) => ({
+    const e = ((r = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : r.state) !== "off", t = (v(this.entity("sensor", "charger_power")) ?? 0) >= ei;
+    return Qt(
+      this.hass,
+      this.entity("sensor", "connected_vehicle"),
+      () => this.requestUpdate()
+    ).map((i) => ({
       ...i,
       status: i.connected && e ? t ? "charging" : "plugged" : "off"
     }));
@@ -2072,7 +2090,7 @@ const Qt = [
     `;
   }
 };
-ft.styles = [
+bt.styles = [
   Xe,
   me`
       :host {
@@ -2361,7 +2379,7 @@ ft.styles = [
       }
     `
 ];
-let lt = ft;
+let dt = bt;
 H(
   "charging-coordinator-vehicle-card-editor",
   Ce(
@@ -2370,20 +2388,20 @@ H(
       {
         name: "layout",
         label: "Layout",
-        selector: { select: { mode: "dropdown", options: Qt } }
+        selector: { select: { mode: "dropdown", options: tr } }
       },
       Oe
     ],
-    Kr
+    Qr
   )
 );
-H("charging-coordinator-vehicle-card", lt);
+H("charging-coordinator-vehicle-card", dt);
 Le(
   "charging-coordinator-vehicle-card",
   "Charging Coordinator vehicles",
   "Your cars with picture, state of charge, target and whether they are plugged in"
 );
-const Jr = [
+const ti = [
   { key: "status", domain: "sensor", label: "Status" },
   { key: "active_control", domain: "switch", label: "Active control" },
   { key: "charge_mode", domain: "select", label: "Charge mode" },
@@ -2407,7 +2425,7 @@ const Jr = [
   { key: "price_cheap", domain: "binary_sensor", label: "Price at or below the limit" },
   { key: "pv_timer_remaining", domain: "sensor", label: "Start / stop timer" },
   { key: "phase_timer_remaining", domain: "sensor", label: "Phase switch timer" }
-], Bt = [
+], Vt = [
   { value: "auto", label: "Auto", icon: "mdi:sine-wave" },
   { value: "1p", label: "1 phase", icon: "mdi:numeric-1-circle-outline" },
   { value: "3p", label: "3 phases", icon: "mdi:numeric-3-circle-outline" }
@@ -2417,11 +2435,11 @@ function Re(n) {
   const e = Math.max(0, Math.round(n));
   return e >= 60 ? `${Math.floor(e / 60)}:${String(e % 60).padStart(2, "0")} min` : `${e} s`;
 }
-function Qr(n) {
+function ri(n) {
   return n && n[0].toUpperCase() + n.slice(1);
 }
-const $e = 388, xe = 140, Ft = 122, re = 262, X = 168, le = 216, S = { x: 192, top: 6, w: 40, h: 44 }, D = 26, B = 112, ei = 36, ti = 6e3, F = 30;
-function ri(n) {
+const $e = 388, xe = 140, jt = 122, re = 262, X = 168, le = 216, S = { x: 192, top: 6, w: 40, h: 44 }, U = 26, B = 112, ii = 36, si = 6e3, F = 30;
+function oi(n) {
   return Math.min(6, Math.max(0.9, 4e3 / (n + 400)));
 }
 function de(n, e) {
@@ -2433,11 +2451,11 @@ function _e(n) {
 function V(...n) {
   return n.map((e) => typeof e == "number" && !Number.isInteger(e) ? e.toFixed(1) : String(e)).join(" ");
 }
-let ii = 0;
+let ni = 0;
 const We = class We extends N {
   constructor() {
     var e;
-    super(...arguments), this._menu = null, this._menuPos = { left: 16, top: 56 }, this._uid = `ccc${++ii}`, this._reducedMotion = ((e = window.matchMedia) == null ? void 0 : e.call(window, "(prefers-reduced-motion: reduce)").matches) ?? !1;
+    super(...arguments), this._menu = null, this._menuPos = { left: 16, top: 56 }, this._uid = `ccc${++ni}`, this._reducedMotion = ((e = window.matchMedia) == null ? void 0 : e.call(window, "(prefers-reduced-motion: reduce)").matches) ?? !1;
   }
   getCardSize() {
     return 5;
@@ -2457,7 +2475,7 @@ const We = class We extends N {
   /** The cars set up in the integration, and which one it takes as plugged in. */
   vehicleState() {
     var o;
-    const e = this.entity("sensor", "connected_vehicle"), t = this.hass ? Zt(this.hass, e) : [], r = (o = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : o.state, i = r === "on" ? !0 : r === "off" ? !1 : void 0, s = i ? t.find((a) => a.name === (e == null ? void 0 : e.state)) : void 0;
+    const e = this.entity("sensor", "connected_vehicle"), t = this.hass ? Qt(this.hass, e) : [], r = (o = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : o.state, i = r === "on" ? !0 : r === "off" ? !1 : void 0, s = i ? t.find((a) => a.name === (e == null ? void 0 : e.state)) : void 0;
     return { connected: i, car: s, others: t.filter((a) => a !== s) };
   }
   /** "Smart · PV + price": the mode with the sources smart mode uses. */
@@ -2482,7 +2500,7 @@ const We = class We extends N {
     const t = ((a = this.entity("switch", "active_control")) == null ? void 0 : a.state) === "on", r = Be.find((c) => {
       var d;
       return c.value === ((d = this.entity("select", "charge_mode")) == null ? void 0 : d.state);
-    }), i = Bt.find(
+    }), i = Vt.find(
       (c) => {
         var d;
         return c.value === ((d = this.entity("select", "phase_mode")) == null ? void 0 : d.state);
@@ -2536,7 +2554,7 @@ const We = class We extends N {
   renderMenu() {
     var s;
     if (!this._menu) return h;
-    const e = this._menu, t = e === "mode" ? Be : Bt, r = e === "mode" ? "charge_mode" : "phase_mode", i = (s = this.entity("select", r)) == null ? void 0 : s.state;
+    const e = this._menu, t = e === "mode" ? Be : Vt, r = e === "mode" ? "charge_mode" : "phase_mode", i = (s = this.entity("select", r)) == null ? void 0 : s.state;
     return l`
       <div class="scrim" @click=${() => this._menu = null}></div>
       <div
@@ -2575,7 +2593,7 @@ const We = class We extends N {
   }
   renderHeadline(e, t) {
     var w, _;
-    const r = (w = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : w.state, i = ((_ = this.entity("binary_sensor", "target_enabled")) == null ? void 0 : _.state) === "on", s = v(this.entity("sensor", "charger_power")), o = v(this.entity("sensor", "target_current")), a = v(this.entity("sensor", "target_phases")), c = e.state, d = c.indexOf(": "), g = Qr(d >= 0 ? c.slice(d + 2) : c);
+    const r = (w = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : w.state, i = ((_ = this.entity("binary_sensor", "target_enabled")) == null ? void 0 : _.state) === "on", s = v(this.entity("sensor", "charger_power")), o = v(this.entity("sensor", "target_current")), a = v(this.entity("sensor", "target_phases")), c = e.state, d = c.indexOf(": "), g = ri(d >= 0 ? c.slice(d + 2) : c);
     let u, y = "", x = "";
     return r === void 0 || r === "unknown" || r === "unavailable" ? (u = "Waiting for charger data", x = "muted") : r === "off" ? (u = "No vehicle connected", y = t === "off" ? "Charging is off" : "", x = "muted") : t === "off" ? (u = "Charging off", x = "muted") : i && (s ?? 0) > 100 ? (u = `Charging · ${j(s)}`, y = a && o ? `${a}p · ${o} A` : "", x = "charging") : i ? (u = "Ready", y = "Charging released, the vehicle is not drawing power") : (u = "Paused", y = /^(enabling|disabling) in /i.test(g) ? "" : g), l`
       <div class="headline ${x}">
@@ -2585,8 +2603,8 @@ const We = class We extends N {
     `;
   }
   renderFlow(e) {
-    var xt;
-    const t = v(this.entity("sensor", "grid_power")), r = v(this.entity("sensor", "pv_dc_power")), i = v(this.entity("sensor", "pv_inverter_power")), s = r === void 0 && i === void 0 ? void 0 : (r ?? 0) + (i ?? 0), o = v(this.entity("sensor", "battery_power")), a = v(this.entity("sensor", "battery_soc")), c = v(this.entity("sensor", "charger_power")), d = ((xt = this.entity("binary_sensor", "battery_hold")) == null ? void 0 : xt.state) === "on", g = t === void 0 ? void 0 : t + (s ?? 0) + (o ?? 0) - (c ?? 0), u = Math.max(0, s ?? 0), y = Math.max(0, t ?? 0), x = Math.max(0, o ?? 0), w = Math.max(0, -(o ?? 0)), _ = Math.min(w, Math.max(0, r ?? 0)), ze = w - _, K = Math.min(u - _, Math.max(0, -(t ?? 0))), ne = Math.max(0, g ?? 0), T = Math.max(0, c ?? 0), Ye = ei / Math.max(u + y + x, ti), I = (b) => b > F ? Math.max(2, b * Ye) : 0, m = I(_), k = I(K), W = I(u - _ - K), Z = I(y), R = W + Z, J = I(ze), ae = I(x), U = Math.max(0, R - J + ae), bt = ne > F ? ne : 0, vt = T > F ? T : 0, Ne = bt + vt, qe = Ne > 0 ? U * bt / Ne : 0, He = Ne > 0 ? U * vt / Ne : 0, Ke = K > F || (t ?? 0) < -F ? f.gridOut : f.gridIn, Ze = d ? f.hold : (o ?? 0) < -F ? f.batteryIn : (o ?? 0) > F ? f.batteryOut : f.home, yt = T > F ? f.charger : f.idle, A = B + Math.max(R, U) / 2, M = S.x, fe = S.top + S.h, C = Ft, Te = D - (m + W + k) / 2, er = (b) => {
+    var _t;
+    const t = v(this.entity("sensor", "grid_power")), r = v(this.entity("sensor", "pv_dc_power")), i = v(this.entity("sensor", "pv_inverter_power")), s = r === void 0 && i === void 0 ? void 0 : (r ?? 0) + (i ?? 0), o = v(this.entity("sensor", "battery_power")), a = v(this.entity("sensor", "battery_soc")), c = v(this.entity("sensor", "charger_power")), d = ((_t = this.entity("binary_sensor", "battery_hold")) == null ? void 0 : _t.state) === "on", g = t === void 0 ? void 0 : t + (s ?? 0) + (o ?? 0) - (c ?? 0), u = Math.max(0, s ?? 0), y = Math.max(0, t ?? 0), x = Math.max(0, o ?? 0), w = Math.max(0, -(o ?? 0)), _ = Math.min(w, Math.max(0, r ?? 0)), ze = w - _, K = Math.min(u - _, Math.max(0, -(t ?? 0))), ne = Math.max(0, g ?? 0), T = Math.max(0, c ?? 0), Ye = ii / Math.max(u + y + x, si), I = (b) => b > F ? Math.max(2, b * Ye) : 0, m = I(_), k = I(K), W = I(u - _ - K), Z = I(y), R = W + Z, J = I(ze), ae = I(x), D = Math.max(0, R - J + ae), vt = ne > F ? ne : 0, yt = T > F ? T : 0, Ne = vt + yt, qe = Ne > 0 ? D * vt / Ne : 0, He = Ne > 0 ? D * yt / Ne : 0, Ke = K > F || (t ?? 0) < -F ? f.gridOut : f.gridIn, Ze = d ? f.hold : (o ?? 0) < -F ? f.batteryIn : (o ?? 0) > F ? f.batteryOut : f.home, $t = T > F ? f.charger : f.idle, A = B + Math.max(R, D) / 2, M = S.x, fe = S.top + S.h, C = jt, Te = U - (m + W + k) / 2, rr = (b) => {
       const p = _e(b), $ = Te + m + b / 2, E = A - R + b / 2, ce = X - 1 - 2 * p;
       return V(
         "M",
@@ -2618,7 +2636,7 @@ const We = class We extends N {
         X + 0.5,
         E
       );
-    }, tr = (b) => {
+    }, ir = (b) => {
       const p = _e(b), $ = Te + m + W + b / 2;
       return V(
         "M",
@@ -2644,13 +2662,13 @@ const We = class We extends N {
         C,
         B
       );
-    }, rr = (b) => {
+    }, sr = (b) => {
       const p = Te + b / 2;
       return V("M", C, p, "L", M - S.w / 2 + 1, p);
-    }, ir = (b) => {
+    }, or = (b) => {
       const p = A - b / 2;
       return V("M", C, p, "L", X + 0.5, p);
-    }, sr = (b) => {
+    }, nr = (b) => {
       const p = _e(b), $ = A - R + b / 2;
       return V(
         "M",
@@ -2671,8 +2689,8 @@ const We = class We extends N {
         M,
         fe
       );
-    }, or = (b) => {
-      const p = _e(b), $ = A - U + b / 2;
+    }, ar = (b) => {
+      const p = _e(b), $ = A - D + b / 2;
       return V(
         "M",
         M,
@@ -2692,8 +2710,8 @@ const We = class We extends N {
         le + 0.5,
         $
       );
-    }, nr = (b) => {
-      const p = _e(b), $ = A - U + b / 2, E = re - 1 - 2 * p;
+    }, cr = (b) => {
+      const p = _e(b), $ = A - D + b / 2, E = re - 1 - 2 * p;
       return V(
         "M",
         le - 0.5,
@@ -2711,7 +2729,7 @@ const We = class We extends N {
         $ - p,
         "L",
         E + p,
-        D + p,
+        U + p,
         "A",
         p,
         p,
@@ -2719,43 +2737,43 @@ const We = class We extends N {
         0,
         1,
         E + 2 * p,
-        D,
+        U,
         "L",
         re,
-        D
+        U
       );
-    }, ar = (b) => {
+    }, lr = (b) => {
       const p = A - b / 2;
       return V("M", le - 0.5, p, "L", re, p);
-    }, G = (b) => `${this._uid}-${b}`, $t = z(f.home), Q = (b, p, $, E, ce, dr, hr) => O`<linearGradient id=${G(b)} gradientUnits="userSpaceOnUse" x1=${p} y1=${$} x2=${E} y2=${ce}>
-        <stop offset="0.25" style="stop-color: ${z(dr)}"></stop>
-        <stop offset="1" style="stop-color: ${z(hr)}"></stop>
-      </linearGradient>`, cr = O`<defs>
-      ${Q("pv", 0, D, 0, A - R, f.pv, f.home)}
+    }, G = (b) => `${this._uid}-${b}`, xt = z(f.home), Q = (b, p, $, E, ce, pr, ur) => O`<linearGradient id=${G(b)} gradientUnits="userSpaceOnUse" x1=${p} y1=${$} x2=${E} y2=${ce}>
+        <stop offset="0.25" style="stop-color: ${z(pr)}"></stop>
+        <stop offset="1" style="stop-color: ${z(ur)}"></stop>
+      </linearGradient>`, dr = O`<defs>
+      ${Q("pv", 0, U, 0, A - R, f.pv, f.home)}
       ${Q("direct", C, 0, M - S.w / 2, 0, f.pv, f.batteryIn)}
       ${Q("grid", C, 0, X, 0, f.gridIn, f.home)}
-      ${Q("export", 0, D, 0, B, f.pv, f.gridOut)}
+      ${Q("export", 0, U, 0, B, f.pv, f.gridOut)}
       ${Q("charge", 0, A - R, 0, fe, f.home, f.batteryIn)}
-      ${Q("discharge", 0, fe, 0, A - U, f.batteryOut, f.home)}
+      ${Q("discharge", 0, fe, 0, A - D, f.batteryOut, f.home)}
       ${Q("ev", le, 0, re, 0, f.home, f.charger)}
-    </defs>`, be = (b, p, $, E) => p > 0 ? this.pipe(b(p), p, $, E) : h, ee = J ? U : R, ve = (b, p, $, E) => $ > 0 ? O`<rect x=${b - 1.5} y=${p} width="3" height=${$} rx="1.5" style="fill: ${E}"></rect>` : h, lr = Math.min(100, Math.max(0, a ?? 0)) / 100, Ie = (S.h - 4) * lr;
+    </defs>`, be = (b, p, $, E) => p > 0 ? this.pipe(b(p), p, $, E) : h, ee = J ? D : R, ve = (b, p, $, E) => $ > 0 ? O`<rect x=${b - 1.5} y=${p} width="3" height=${$} rx="1.5" style="fill: ${E}"></rect>` : h, hr = Math.min(100, Math.max(0, a ?? 0)) / 100, Ie = (S.h - 4) * hr;
     return l`
       <div class="flow" style="aspect-ratio: ${$e} / ${xe}">
         <svg viewBox="0 0 ${$e} ${xe}" aria-hidden="true">
-          ${cr}
-          ${ee > 0 ? O`<rect x=${X} y=${A - ee} width=${le - X} height=${ee} style="fill: ${$t}"></rect>` : h}
-          ${be(rr, m, `url(#${G("direct")})`, _)}
-          ${be(er, W, `url(#${G("pv")})`, u - _ - K)}
-          ${k > 0 ? this.pipe(tr(k), k, `url(#${G("export")})`, K) : h}
-          ${k > 0 ? h : be(ir, Z, `url(#${G("grid")})`, y)}
-          ${ae > 0 ? this.pipe(or(ae), ae, `url(#${G("discharge")})`, x) : J > 0 ? this.pipe(sr(J), J, `url(#${G("charge")})`, ze) : h}
-          ${be(nr, qe, $t, ne)}
-          ${be(ar, He, `url(#${G("ev")})`, T)}
+          ${dr}
+          ${ee > 0 ? O`<rect x=${X} y=${A - ee} width=${le - X} height=${ee} style="fill: ${xt}"></rect>` : h}
+          ${be(sr, m, `url(#${G("direct")})`, _)}
+          ${be(rr, W, `url(#${G("pv")})`, u - _ - K)}
+          ${k > 0 ? this.pipe(ir(k), k, `url(#${G("export")})`, K) : h}
+          ${k > 0 ? h : be(or, Z, `url(#${G("grid")})`, y)}
+          ${ae > 0 ? this.pipe(ar(ae), ae, `url(#${G("discharge")})`, x) : J > 0 ? this.pipe(nr(J), J, `url(#${G("charge")})`, ze) : h}
+          ${be(cr, qe, xt, ne)}
+          ${be(lr, He, `url(#${G("ev")})`, T)}
           ${ee > 0 ? this.pulse(V("M", X, A - ee / 2, "L", le, A - ee / 2), ee, ne + T) : h}
           ${ve(C - 1.5, Te, m + W + k, f.pv)}
           ${k > 0 ? ve(C - 1.5, B - k / 2, k, Ke) : ve(C - 1.5, Z ? A - Z : B, Z, Ke)}
-          ${ve(re + 1.5, D - qe / 2, qe, f.home)}
-          ${ve(re + 1.5, He ? A - He : B, He, yt)}
+          ${ve(re + 1.5, U - qe / 2, qe, f.home)}
+          ${ve(re + 1.5, He ? A - He : B, He, $t)}
           <rect x=${M - 7} y=${S.top - 4} width="14" height="5" rx="1.5"
             style="fill: ${Ze}"></rect>
           <rect class="battery" x=${M - S.w / 2} y=${S.top} width=${S.w}
@@ -2765,7 +2783,7 @@ const We = class We extends N {
                 style="fill: ${z(Ze)}"></rect>` : h}
         </svg>
 
-        ${this.renderSide("left", D, "mdi:solar-power-variant", f.pv, j(s), "PV")}
+        ${this.renderSide("left", U, "mdi:solar-power-variant", f.pv, j(s), "PV")}
         ${this.renderSide(
       "left",
       B,
@@ -2774,12 +2792,12 @@ const We = class We extends N {
       j(t === void 0 ? void 0 : Math.abs(t)),
       t === void 0 ? "Grid" : t >= 0 ? "Grid import" : "Grid export"
     )}
-        ${this.renderSide("right", D, "mdi:home", f.home, j(g), "Home")}
+        ${this.renderSide("right", U, "mdi:home", f.home, j(g), "Home")}
         ${this.renderSide(
       "right",
       B,
       "mdi:ev-station",
-      yt,
+      $t,
       j(c),
       this.renderChargerSub(e)
     )}
@@ -2805,11 +2823,11 @@ const We = class We extends N {
     return this._reducedMotion || r <= F ? h : O`<path class="pulse" d=${e}
       style="stroke-width: ${Math.min(4, Math.max(2, t * 0.4)).toFixed(1)}">
       <animate attributeName="stroke-dashoffset" from="0" to="-36"
-        dur="${ri(r).toFixed(2)}s" repeatCount="indefinite"></animate>
+        dur="${oi(r).toFixed(2)}s" repeatCount="indefinite"></animate>
     </path>`;
   }
   renderSide(e, t, r, i, s, o) {
-    const a = e === "left" ? `right: calc(100% - ${de(Ft - 8, $e)}); top: ${de(t, xe)}; text-align: right;` : `left: ${de(re + 8, $e)}; top: ${de(t, xe)};`, c = l`<ha-icon .icon=${r} style="color: ${i}"></ha-icon>`;
+    const a = e === "left" ? `right: calc(100% - ${de(jt - 8, $e)}); top: ${de(t, xe)}; text-align: right;` : `left: ${de(re + 8, $e)}; top: ${de(t, xe)};`, c = l`<ha-icon .icon=${r} style="color: ${i}"></ha-icon>`;
     return l`
       <div class="side ${e}" style=${a}>
         ${e === "right" ? c : h}
@@ -3186,9 +3204,9 @@ We.properties = {
       color: var(--error-color);
     }
   `;
-let dt = We;
-H("charging-coordinator-card-editor", Ce([Pe, Oe], Jr));
-H("charging-coordinator-card", dt);
+let ht = We;
+H("charging-coordinator-card-editor", Ce([Pe, Oe], ti));
+H("charging-coordinator-card", ht);
 Le(
   "charging-coordinator-card",
   "Charging Coordinator",

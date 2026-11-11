@@ -170,16 +170,59 @@ interface VehicleAttribute {
   range_entity?: string | null;
   image_entity?: string | null;
   image?: string | null; // picture URL, used without an image entity
+  image_media?: string | null; // picked media that needs a signed URL, e.g. from My media
 }
 
-/** The car's picture: its image entity's (the URL carries a rotating token), else the URL. */
-function picture(hass: Hass, v: VehicleAttribute): string | undefined {
+// signed URLs of picked media, shared by all cards; renewed before they expire
+const MEDIA_EXPIRES = 24 * 3600; // s
+interface ResolvedMedia {
+  url?: string;
+  until: number; // ms; while resolving: when to give up and ask again
+  waiting: Set<() => void>; // cards to render again once the URL is there
+}
+const resolvedMedia = new Map<string, ResolvedMedia>();
+
+/** A signed URL for media such as My media; undefined until it is resolved. */
+function mediaUrl(hass: Hass, id: string, onResolved: () => void): string | undefined {
+  const known = resolvedMedia.get(id);
+  if (known && Date.now() < known.until) {
+    if (!known.url) known.waiting.add(onResolved);
+    return known.url;
+  }
+  if (!hass.callWS) return known?.url;
+  const entry: ResolvedMedia = { url: known?.url, until: Date.now() + 60_000, waiting: new Set([onResolved]) };
+  resolvedMedia.set(id, entry);
+  hass
+    .callWS<{ url: string }>({ type: "media_source/resolve_media", media_content_id: id, expires: MEDIA_EXPIRES })
+    .then((r) => {
+      entry.url = r.url;
+      entry.until = Date.now() + (MEDIA_EXPIRES - 600) * 1000;
+      entry.waiting.forEach((done) => done());
+      entry.waiting.clear();
+    })
+    .catch((err) => console.warn(`Cannot resolve the car picture ${id}:`, err));
+  return known?.url;
+}
+
+/** The car's picture: its image entity's (the URL carries a rotating token), else the picked one. */
+function picture(hass: Hass, v: VehicleAttribute, onResolved?: () => void): string | undefined {
   const url = v.image_entity ? hass.states[v.image_entity]?.attributes.entity_picture : undefined;
-  return typeof url === "string" && url ? url : v.image || undefined;
+  if (typeof url === "string" && url) return url;
+  if (v.image) return v.image;
+  if (!v.image_media) return undefined;
+  // cards that show no pictures don't resolve them
+  return onResolved ? mediaUrl(hass, v.image_media, onResolved) : resolvedMedia.get(v.image_media)?.url;
 }
 
-/** The cars listed in the integration's connected vehicle sensor. */
-export function readVehicles(hass: Hass, sensor: HassEntity | undefined): Vehicle[] {
+/**
+ * The cars listed in the integration's connected vehicle sensor. Pictures that need a
+ * signed URL are only resolved with `onResolved`, which is called once one is ready.
+ */
+export function readVehicles(
+  hass: Hass,
+  sensor: HassEntity | undefined,
+  onResolved?: () => void,
+): Vehicle[] {
   const list = sensor?.attributes.vehicles;
   if (!Array.isArray(list)) return [];
   const value = (id: string | null | undefined) => (id ? num(hass.states[id]) : undefined);
@@ -192,7 +235,7 @@ export function readVehicles(hass: Hass, sensor: HassEntity | undefined): Vehicl
       target: value(v.target_soc_entity),
       range: num(range),
       rangeUnit: (range?.attributes.unit_of_measurement as string | undefined) ?? "km",
-      image: picture(hass, v),
+      image: picture(hass, v, onResolved),
       socEntity: v.soc_entity || undefined,
     };
   });

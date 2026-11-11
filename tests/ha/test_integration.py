@@ -18,6 +18,11 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.charging_coordinator.const import DOMAIN
 from custom_components.charging_coordinator.devices.shm2_speedwire import MeterSample
+from custom_components.charging_coordinator.vehicles import (
+    IMAGE_UPLOAD_MEDIA,
+    media_value,
+    picture_url,
+)
 
 from ..devices.test_shm2 import datagram
 
@@ -361,10 +366,47 @@ async def test_vehicle_subentry_flow(
     result = await hass.config_entries.subentries.async_configure(result["flow_id"], user_input)
     assert result["errors"] == {"name": "name_exists"}
 
-    user_input |= {"name": " e-up! ", "image": " "}
+    picked = {"media_content_id": f"{IMAGE_UPLOAD_MEDIA}abc", "media_content_type": "image/png"}
+    user_input |= {"name": " e-up! ", "image": picked}
     result = await hass.config_entries.subentries.async_configure(result["flow_id"], user_input)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     created = [s for s in entry.subentries.values() if s.title == "e-up!"]
     assert len(created) == 1
-    assert created[0].data == {"soc_entity": "sensor.e_up_soc", "connected_template": "{{ true }}"}
+    assert created[0].data == {
+        "soc_entity": "sensor.e_up_soc",
+        "connected_template": "{{ true }}",
+        "image": picked,
+    }
+    cars = hass.states.get("sensor.charging_coordinator_connected_vehicle").attributes["vehicles"]
+    assert cars[-1]["image"] == "/api/image/serve/abc/512x512"
+
+
+async def test_reconfigure_keeps_a_picture_url_as_media(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=CONFIG,
+        unique_id=DOMAIN,
+        subentries_data=[vehicle("sub3", "ID.3", "id3", {"image": "/api/image/serve/abc/512x512"})],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    result = await entry.start_subentry_reconfigure_flow(hass, "sub3")
+    image_key = next(k for k in result["data_schema"].schema if k == "image")
+    assert image_key.description == {
+        "suggested_value": {
+            "media_content_id": f"{IMAGE_UPLOAD_MEDIA}abc",
+            "media_content_type": "image",
+        }
+    }
+
+
+def test_picture_urls() -> None:
+    assert picture_url(f"{IMAGE_UPLOAD_MEDIA}abc") == "/api/image/serve/abc/512x512"
+    # My media needs a signed URL, which the cards ask for
+    assert picture_url("media-source://media_source/local/id7.png") is None
+    assert picture_url("/local/id7.png") == "/local/id7.png"
+    assert media_value("/local/id7.png") is None

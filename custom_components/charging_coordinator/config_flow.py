@@ -46,6 +46,7 @@ from .const import (
     SUBENTRY_VEHICLE,
 )
 from .devices.sma_modbus import ModbusError, SmaModbusClient, read_hybrid
+from .vehicles import media_value
 
 
 def _number(
@@ -202,7 +203,9 @@ def _vehicle_schema(defaults: dict[str, Any]) -> vol.Schema:
             req(CONF_VEHICLE_CONNECTED): selector.TemplateSelector(),
             opt(CONF_VEHICLE_TARGET_SOC): entity("sensor", "number", "input_number"),
             opt(CONF_VEHICLE_RANGE): entity("sensor"),
-            opt(CONF_VEHICLE_IMAGE): selector.TextSelector(),
+            opt(CONF_VEHICLE_IMAGE): selector.MediaSelector(
+                selector.MediaSelectorConfig(accept=["image/*"])
+            ),
             opt(CONF_VEHICLE_IMAGE_ENTITY): entity("image", "camera"),
         }
     )
@@ -233,7 +236,11 @@ class VehicleSubentryFlow(ConfigSubentryFlow):
                 return self.async_update_and_abort(
                     self._get_entry(), subentry, title=title, data=data
                 )
-        defaults = user_input or {CONF_VEHICLE_NAME: subentry.title, **subentry.data}
+        defaults = user_input or {
+            CONF_VEHICLE_NAME: subentry.title,
+            **subentry.data,
+            CONF_VEHICLE_IMAGE: media_value(subentry.data.get(CONF_VEHICLE_IMAGE)),
+        }
         return self.async_show_form(
             step_id="reconfigure", data_schema=_vehicle_schema(defaults), errors=errors
         )

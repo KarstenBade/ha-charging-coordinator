@@ -76,7 +76,9 @@ class ChargingCoordinatorVehicleCard extends CoordinatorCard<VehicleCardConfig> 
     // without a cable at the charger, a car's template is stale: nothing is plugged in
     const cable = this.entity("binary_sensor", "vehicle_connected")?.state !== "off";
     const charging = (num(this.entity("sensor", "charger_power")) ?? 0) >= CHARGING_MIN;
-    return readVehicles(this.hass, this.entity("sensor", "connected_vehicle")).map((v) => ({
+    return readVehicles(this.hass, this.entity("sensor", "connected_vehicle"), () =>
+      this.requestUpdate(),
+    ).map((v) => ({
       ...v,
       status: v.connected && cable ? (charging ? "charging" : "plugged") : "off",
     }));

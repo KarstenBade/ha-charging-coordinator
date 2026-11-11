@@ -94,7 +94,7 @@
             "connected_template": "Connected",
             "target_soc_entity": "Target state of charge (optional)",
             "range_entity": "Range (optional)",
-            "image": "Picture URL (optional)",
+            "image": "Picture (optional)",
             "image_entity": "Picture entity (optional)"
           },
           "data_description": {
@@ -103,7 +103,7 @@
             "connected_template": "Template that is true while this car is plugged in at home, e.g. {{ is_state('device_tracker.id_7', 'home') and is_state('binary_sensor.id_7_charging_cable', 'on') }}. If two cars are true at once, the one that turned true last counts as connected.",
             "target_soc_entity": "The charge target set in the car, shown on the SoC bar.",
             "range_entity": "Sensor with the remaining range.",
-            "image": "For example /api/image/serve/…/512x512 for a picture uploaded in Home Assistant, or /local/cars/id7.png for config/www/cars/id7.png.",
+            "image": "A picture of the car, e.g. one under Image Upload that you uploaded for another card, or one from My media.",
             "image_entity": "Image or camera entity with a picture of the car, e.g. from the car's integration. Used instead of the URL while it has a picture."
           }
         },
@@ -115,7 +115,7 @@
             "connected_template": "Connected",
             "target_soc_entity": "Target state of charge (optional)",
             "range_entity": "Range (optional)",
-            "image": "Picture URL (optional)",
+            "image": "Picture (optional)",
             "image_entity": "Picture entity (optional)"
           },
           "data_description": {
@@ -124,7 +124,7 @@
             "connected_template": "Template that is true while this car is plugged in at home, e.g. {{ is_state('device_tracker.id_7', 'home') and is_state('binary_sensor.id_7_charging_cable', 'on') }}. If two cars are true at once, the one that turned true last counts as connected.",
             "target_soc_entity": "The charge target set in the car, shown on the SoC bar.",
             "range_entity": "Sensor with the remaining range.",
-            "image": "For example /api/image/serve/…/512x512 for a picture uploaded in Home Assistant, or /local/cars/id7.png for config/www/cars/id7.png.",
+            "image": "A picture of the car, e.g. one under Image Upload that you uploaded for another card, or one from My media.",
             "image_entity": "Image or camera entity with a picture of the car, e.g. from the car's integration. Used instead of the URL while it has a picture."
           }
         }

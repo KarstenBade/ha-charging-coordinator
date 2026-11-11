@@ -38,5 +38,6 @@ CONF_VEHICLE_CONNECTED = "connected_template"
 CONF_VEHICLE_TARGET_SOC = "target_soc_entity"
 CONF_VEHICLE_RANGE = "range_entity"
 CONF_VEHICLE_IMAGE_ENTITY = "image_entity"
-CONF_VEHICLE_IMAGE = "image"  # picture URL, used without an image entity
+# picked media {media_content_id, media_content_type}; a URL string up to 0.4.2
+CONF_VEHICLE_IMAGE = "image"
 NO_VEHICLE = "none"
