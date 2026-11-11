@@ -168,7 +168,17 @@ interface VehicleAttribute {
   soc_entity?: string | null;
   target_soc_entity?: string | null;
   range_entity?: string | null;
-  image?: string | null;
+  image_entity?: string | null;
+  image?: string | null; // picture URL of cars set up with 0.4.0
+}
+
+/** The car's picture: its image entity's (the URL carries a rotating token) or a URL. */
+function picture(hass: Hass, v: VehicleAttribute): string | undefined {
+  if (v.image_entity) {
+    const url = hass.states[v.image_entity]?.attributes.entity_picture;
+    return typeof url === "string" && url ? url : undefined;
+  }
+  return v.image || undefined;
 }
 
 /** The cars listed in the integration's connected vehicle sensor. */
@@ -185,7 +195,7 @@ export function readVehicles(hass: Hass, sensor: HassEntity | undefined): Vehicl
       target: value(v.target_soc_entity),
       range: num(range),
       rangeUnit: (range?.attributes.unit_of_measurement as string | undefined) ?? "km",
-      image: v.image || undefined,
+      image: picture(hass, v),
       socEntity: v.soc_entity || undefined,
     };
   });

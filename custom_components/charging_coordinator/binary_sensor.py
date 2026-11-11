@@ -102,8 +102,6 @@ class VehicleConnectedSensor(CoordinatorEntity, RestoreEntity, BinarySensorEntit
             model="Vehicle",
             via_device=(DOMAIN, entry_id),
         )
-        if config.image:
-            self._attr_entity_picture = config.image
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -116,6 +114,10 @@ class VehicleConnectedSensor(CoordinatorEntity, RestoreEntity, BinarySensorEntit
     @property
     def is_on(self) -> bool:
         return self.vehicle.connected
+
+    @property
+    def entity_picture(self) -> str | None:
+        return self.vehicle.picture()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

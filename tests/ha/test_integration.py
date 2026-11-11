@@ -216,7 +216,7 @@ async def test_charger_values_unknown_until_charger_data(
     assert hass.states.get("sensor.charging_coordinator_site_power").state == "10000.0"
 
 
-def vehicle(sub_id: str, name: str, flag: str) -> dict[str, Any]:
+def vehicle(sub_id: str, name: str, flag: str, picture: dict[str, str]) -> dict[str, Any]:
     return {
         "subentry_id": sub_id,
         "subentry_type": "vehicle",
@@ -225,7 +225,7 @@ def vehicle(sub_id: str, name: str, flag: str) -> dict[str, Any]:
         "data": {
             "soc_entity": f"sensor.{flag}_soc",
             "connected_template": f"{{{{ is_state('input_boolean.{flag}_plugged', 'on') }}}}",
-            "image": f"/local/{flag}.png",
+            **picture,
         },
     }
 
@@ -235,7 +235,11 @@ async def setup_with_vehicles(hass: HomeAssistant) -> MockConfigEntry:
         domain=DOMAIN,
         data=CONFIG,
         unique_id=DOMAIN,
-        subentries_data=[vehicle("sub3", "ID.3", "id3"), vehicle("sub7", "ID.7", "id7")],
+        subentries_data=[
+            # a picture URL as set up with 0.4.0, and an image entity
+            vehicle("sub3", "ID.3", "id3", {"image": "/local/id3.png"}),
+            vehicle("sub7", "ID.7", "id7", {"image_entity": "image.id7"}),
+        ],
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -249,11 +253,14 @@ async def test_newest_connected_template_wins(
     mock_devices: dict[str, AsyncMock],
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    hass.states.async_set("image.id7", "2026-11-11", {"entity_picture": "/api/image_proxy/x"})
     entry = await setup_with_vehicles(hass)
     goe_state(hass, car=3, frc=1, amp=6, psm=1, nrg="[230,230,230,0,0,0,0,0,0,0,0,0,0,0,0,0]")
     await hass.async_block_till_done()
     await feed_and_tick(hass, entry, grid=500)
     sensor = "sensor.charging_coordinator_connected_vehicle"
+    id7 = hass.states.get("binary_sensor.charging_coordinator_id_7_connected")
+    assert id7.attributes["entity_picture"] == "/api/image_proxy/x"
     assert hass.states.get(sensor).state == "none"
 
     hass.states.async_set("input_boolean.id3_plugged", "on")
@@ -270,6 +277,7 @@ async def test_newest_connected_template_wins(
     cars = hass.states.get(sensor).attributes["vehicles"]
     assert [(c["name"], c["connected"]) for c in cars] == [("ID.3", True), ("ID.7", True)]
     assert cars[1]["soc_entity"] == "sensor.id7_soc"
+    assert cars[1]["image_entity"] == "image.id7"
 
     hass.states.async_set("input_boolean.id7_plugged", "off")
     await hass.async_block_till_done()
@@ -353,7 +361,7 @@ async def test_vehicle_subentry_flow(
     result = await hass.config_entries.subentries.async_configure(result["flow_id"], user_input)
     assert result["errors"] == {"name": "name_exists"}
 
-    user_input |= {"name": " e-up! ", "image": " "}
+    user_input |= {"name": " e-up! "}
     result = await hass.config_entries.subentries.async_configure(result["flow_id"], user_input)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()

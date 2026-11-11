@@ -27,6 +27,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_VEHICLE_CONNECTED,
     CONF_VEHICLE_IMAGE,
+    CONF_VEHICLE_IMAGE_ENTITY,
     CONF_VEHICLE_RANGE,
     CONF_VEHICLE_SOC,
     CONF_VEHICLE_TARGET_SOC,
@@ -43,7 +44,8 @@ class VehicleConfig:
     connected_template: str
     target_soc_entity: str | None = None
     range_entity: str | None = None
-    image: str | None = None
+    image_entity: str | None = None
+    image: str | None = None  # picture URL, only set up before image entities
 
     @classmethod
     def from_subentry(cls, subentry: ConfigSubentry) -> VehicleConfig:
@@ -55,6 +57,7 @@ class VehicleConfig:
             connected_template=data[CONF_VEHICLE_CONNECTED],
             target_soc_entity=data.get(CONF_VEHICLE_TARGET_SOC) or None,
             range_entity=data.get(CONF_VEHICLE_RANGE) or None,
+            image_entity=data.get(CONF_VEHICLE_IMAGE_ENTITY) or None,
             image=data.get(CONF_VEHICLE_IMAGE) or None,
         )
 
@@ -117,6 +120,14 @@ class VehicleTracker:
         elif self.connected and self.connected_since is not None and since < self.connected_since:
             self.connected_since = since
 
+    def picture(self) -> str | None:
+        """The picture of the image entity (its URL carries a rotating token), or the URL."""
+        if self.config.image_entity:
+            state = self.hass.states.get(self.config.image_entity)
+            picture = state.attributes.get("entity_picture") if state else None
+            return str(picture) if picture else None
+        return self.config.image
+
     def as_dict(self) -> dict[str, Any]:
         c = self.config
         return {
@@ -126,6 +137,7 @@ class VehicleTracker:
             "soc_entity": c.soc_entity,
             "target_soc_entity": c.target_soc_entity,
             "range_entity": c.range_entity,
+            "image_entity": c.image_entity,
             "image": c.image,
         }
 

@@ -84,7 +84,7 @@ The go-e can't tell cars apart, so each car gets a template that says when it is
 | Connected | Template that is true while the car is plugged in at home |
 | Target state of charge | Optional, the charge target set in the car; shown on the SoC bar |
 | Range | Optional range sensor |
-| Image | Optional picture URL, e.g. `/local/cars/id7.png` for `config/www/cars/id7.png` |
+| Picture | Optional image entity with a picture of the car, e.g. from the car's integration. For a picture file of your own, e.g. `config/www/cars/id7.png`, first create a template helper of type *Image* with the URL `/local/cars/id7.png` |
 
 For example, with a device tracker and a cable sensor:
 

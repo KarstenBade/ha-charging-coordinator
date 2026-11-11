@@ -631,6 +631,14 @@ function j(n) {
 function L(n) {
   return n === void 0 ? "–" : n.toFixed(3);
 }
+function Lr(n, e) {
+  var t;
+  if (e.image_entity) {
+    const r = (t = n.states[e.image_entity]) == null ? void 0 : t.attributes.entity_picture;
+    return typeof r == "string" && r ? r : void 0;
+  }
+  return e.image || void 0;
+}
 function Zt(n, e) {
   const t = e == null ? void 0 : e.attributes.vehicles;
   if (!Array.isArray(t)) return [];
@@ -644,12 +652,12 @@ function Zt(n, e) {
       target: r(i.target_soc_entity),
       range: v(o),
       rangeUnit: (o == null ? void 0 : o.attributes.unit_of_measurement) ?? "km",
-      image: i.image || void 0,
+      image: Lr(n, i),
       socEntity: i.soc_entity || void 0
     };
   });
 }
-const Lr = 4e3, gt = class gt extends pe {
+const zr = 4e3, gt = class gt extends pe {
   constructor() {
     super(...arguments), this._pending = /* @__PURE__ */ new Map();
   }
@@ -672,7 +680,7 @@ const Lr = 4e3, gt = class gt extends pe {
   async setNumber(e, t) {
     var c;
     const r = this.entity("number", e), i = Number((r == null ? void 0 : r.attributes.min) ?? -1 / 0), s = Number((r == null ? void 0 : r.attributes.max) ?? 1 / 0), o = Math.min(s, Math.max(i, t));
-    this._pending.set(e, { value: o, until: Date.now() + Lr }), this.requestUpdate();
+    this._pending.set(e, { value: o, until: Date.now() + zr }), this.requestUpdate();
     const a = this.entityId("number", e);
     await ((c = this.hass) == null ? void 0 : c.callService(rt(a), "set_value", {
       entity_id: a,
@@ -830,13 +838,13 @@ const Xe = me`
     }
   }
 `;
-async function zr() {
+async function Nr() {
   var t, r, i;
   if (customElements.get("ha-form")) return;
   const n = await ((t = window.loadCardHelpers) == null ? void 0 : t.call(window)), e = await (n == null ? void 0 : n.createCardElement({ type: "entities", entities: [] }));
   await ((i = (r = e == null ? void 0 : e.constructor) == null ? void 0 : r.getConfigElement) == null ? void 0 : i.call(r));
 }
-function Nr(n) {
+function Hr(n) {
   return {
     type: "expandable",
     name: "entities",
@@ -847,7 +855,7 @@ function Nr(n) {
     }))
   };
 }
-function Hr(n, e) {
+function Tr(n, e) {
   const t = new Map(n.map((r) => [r.key, r]));
   return {
     label: (r) => {
@@ -861,7 +869,7 @@ function Hr(n, e) {
     }
   };
 }
-function Tr(n) {
+function Ir(n) {
   if (typeof n != "object" || n === null) return;
   const e = Object.entries(n).filter(
     (t) => typeof t[1] == "string" && t[1] !== ""
@@ -871,14 +879,14 @@ function Tr(n) {
 function Ce(n, e = []) {
   var i;
   const t = n.map(({ name: s, selector: o }) => ({ name: s, selector: o }));
-  e.length && t.push(Nr(e));
+  e.length && t.push(Hr(e));
   const r = Object.fromEntries(n.map((s) => [s.name, s.label]));
   return i = class extends pe {
     setConfig(o) {
       this._config = o;
     }
     connectedCallback() {
-      super.connectedCallback(), zr().then(() => this.requestUpdate());
+      super.connectedCallback(), Nr().then(() => this.requestUpdate());
     }
     changed(o) {
       const a = { ...this._config };
@@ -886,14 +894,14 @@ function Ce(n, e = []) {
         const g = o.detail.value[d.name];
         g === void 0 || g === "" || g === !1 ? delete a[d.name] : a[d.name] = g;
       }
-      const c = Tr(o.detail.value.entities);
+      const c = Ir(o.detail.value.entities);
       c ? a.entities = c : delete a.entities, this._config = a, this.dispatchEvent(
         new CustomEvent("config-changed", { detail: { config: a }, bubbles: !0, composed: !0 })
       );
     }
     render() {
       if (!this.hass || !this._config) return h;
-      const o = Hr(e, this._config.prefix);
+      const o = Tr(e, this._config.prefix);
       return l`<ha-form
         .hass=${this.hass}
         .data=${this._config}
@@ -931,7 +939,7 @@ function Le(n, e, t) {
     documentationURL: "https://github.com/KarstenBade/ha-charging-coordinator"
   });
 }
-const Ir = [
+const Rr = [
   { key: "charge_mode", domain: "select", label: "Charge mode" },
   { key: "smart_pv", domain: "switch", label: "Smart: PV surplus" },
   { key: "smart_price", domain: "switch", label: "Smart: cheap price" },
@@ -939,7 +947,7 @@ const Ir = [
   { key: "price", domain: "sensor", label: "Current price" },
   { key: "grid_charge_max_power", domain: "number", label: "Max grid power" },
   { key: "block_battery_on_cheap_price", domain: "switch", label: "Battery hold at a cheap price" }
-], Nt = 0.01, Rr = 500, mt = class mt extends N {
+], Nt = 0.01, Ur = 500, mt = class mt extends N {
   getCardSize() {
     var e;
     return (e = this._config) != null && e.compact ? 2 : 5;
@@ -1063,7 +1071,7 @@ const Ir = [
           <span class="value">${e === void 0 ? "–" : `${(e / 1e3).toFixed(1)} kW`}</span>
           ${this.renderStepper(
       "Max grid power",
-      (t) => e === void 0 ? void 0 : this.setNumber("grid_charge_max_power", e + t * Rr)
+      (t) => e === void 0 ? void 0 : this.setNumber("grid_charge_max_power", e + t * Ur)
     )}
         </div>
       </div>
@@ -1378,7 +1386,7 @@ H(
     Pe,
     { name: "compact", label: "Compact (no explanations)", selector: { boolean: {} } },
     Oe
-  ], Ir)
+  ], Rr)
 );
 H("charging-coordinator-control-card", ot);
 Le(
@@ -1390,7 +1398,7 @@ const Tt = [
   { key: "priority_soc", name: "Battery first below" },
   { key: "buffer_soc", name: "May keep a charge going above" },
   { key: "buffer_start_soc", name: "May start a charge from" }
-], Ur = [
+], Dr = [
   { key: "battery_soc", domain: "sensor", label: "Battery state of charge" },
   { key: "battery_power", domain: "sensor", label: "Battery power (+ discharge, - charge)" },
   { key: "battery_hold", domain: "binary_sensor", label: "Battery hold" },
@@ -1667,19 +1675,19 @@ Ve.properties = {
     `
 ];
 let nt = Ve;
-H("charging-coordinator-battery-card-editor", Ce([Pe, Oe], Ur));
+H("charging-coordinator-battery-card-editor", Ce([Pe, Oe], Dr));
 H("charging-coordinator-battery-card", nt);
 Le(
   "charging-coordinator-battery-card",
   "Charging Coordinator battery",
   "When the home battery comes before the car, and the battery hold switches"
 );
-const Dr = [
+const Br = [
   { key: "price", domain: "sensor", label: "Current price" },
   { key: "price_threshold", domain: "number", label: "Price limit" },
   // defaults to the sensor named in the price sensor's `source` attribute
   { key: "price_forecast", domain: "forecast", label: "Sensor with the price forecast" }
-], Fe = 36e5, P = 24 * Fe, Br = 0.01, Fr = 5 * 6e4, Vr = ["start", "start_time", "startsAt", "starts_at", "time", "from", "datetime", "hour"], jr = ["end", "end_time", "endsAt", "ends_at", "till", "to"], Wr = ["value", "price", "total", "price_per_kwh", "price_eur_per_kwh", "marketprice"];
+], Fe = 36e5, P = 24 * Fe, Fr = 0.01, Vr = 5 * 6e4, jr = ["start", "start_time", "startsAt", "starts_at", "time", "from", "datetime", "hour"], Wr = ["end", "end_time", "endsAt", "ends_at", "till", "to"], Gr = ["value", "price", "total", "price_per_kwh", "price_eur_per_kwh", "marketprice"];
 function at(n) {
   if (typeof n == "number") return n < 1e12 ? n * 1e3 : n;
   if (typeof n != "string") return;
@@ -1689,7 +1697,7 @@ function at(n) {
 function it(n, e) {
   for (const t of e) if (n[t] !== void 0 && n[t] !== null) return n[t];
 }
-function Gr(n) {
+function Xr(n) {
   const e = /* @__PURE__ */ new Map(), t = (r, i, s) => {
     e.has(r) || e.set(r, { start: r, end: i ?? NaN, price: s });
   };
@@ -1704,8 +1712,8 @@ function Gr(n) {
       }
       for (const s of i) {
         if (typeof s != "object" || s === null) continue;
-        const o = s, a = at(it(o, Vr)), c = Number(it(o, Wr));
-        a === void 0 || !Number.isFinite(c) || t(a, at(it(o, jr)), c);
+        const o = s, a = at(it(o, jr)), c = Number(it(o, Gr));
+        a === void 0 || !Number.isFinite(c) || t(a, at(it(o, Wr)), c);
       }
     }
   return Jt([...e.values()]);
@@ -1720,7 +1728,7 @@ function Jt(n) {
     };
   });
 }
-async function Xr(n, e) {
+async function Yr(n, e) {
   if (!n.callWS) return [];
   const t = (/* @__PURE__ */ new Date()).setHours(0, 0, 0, 0), r = await n.callWS({
     type: "history/history_during_period",
@@ -1739,7 +1747,7 @@ async function Xr(n, e) {
 function Dt(n) {
   return new Date(n).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
-function Yr(n) {
+function qr(n) {
   const e = Math.round(n / 6e4);
   if (e < 60) return `${e} min`;
   const t = Math.floor(e / 60), r = e % 60;
@@ -1764,10 +1772,10 @@ const je = class je extends N {
   forecast() {
     var r, i, s, o;
     const e = ((i = (r = this._config) == null ? void 0 : r.entities) == null ? void 0 : i.price_forecast) || ((s = this.entity("sensor", "price")) == null ? void 0 : s.attributes.source), t = typeof e == "string" ? (o = this.hass) == null ? void 0 : o.states[e] : void 0;
-    return t ? Gr(t.attributes) : [];
+    return t ? Xr(t.attributes) : [];
   }
   maybeLoadHistory() {
-    !this.hass || this._historyLoading || Date.now() - this._historyAt < Fr || (this._historyLoading = !0, Xr(this.hass, this.entityId("sensor", "price")).then((e) => this._history = e).catch((e) => console.warn("Loading price history failed", e)).finally(() => {
+    !this.hass || this._historyLoading || Date.now() - this._historyAt < Vr || (this._historyLoading = !0, Yr(this.hass, this.entityId("sensor", "price")).then((e) => this._history = e).catch((e) => console.warn("Loading price history failed", e)).finally(() => {
       this._historyAt = Date.now(), this._historyLoading = !1;
     }));
   }
@@ -1790,7 +1798,7 @@ const je = class je extends N {
           <span class="value" title="Price limit">${L(e)}</span>
           ${this.renderStepper(
       "Price limit",
-      (d) => e === void 0 ? void 0 : this.setNumber("price_threshold", Math.round((e + d * Br) * 1e3) / 1e3)
+      (d) => e === void 0 ? void 0 : this.setNumber("price_threshold", Math.round((e + d * Fr) * 1e3) / 1e3)
     )}
         </div>
       </div>
@@ -1808,7 +1816,7 @@ const je = class je extends N {
     if (!o) return "No upcoming price at or below your limit";
     let a = o.end;
     for (const c of e) c.start === a && c.price <= t && (a = c.end);
-    return `At or below your limit from ${Dt(o.start)}, for ${Yr(a - o.start)}`;
+    return `At or below your limit from ${Dt(o.start)}, for ${qr(a - o.start)}`;
   }
   renderChart(e, t, r, i, s) {
     const c = e.map((m) => m.price).concat(t === void 0 ? [] : [t]), d = Math.max(...c), g = Math.min(...c), u = g < 0 ? g : Math.max(0, g - (d - g) * 0.5 - 0.01), y = d + (d - u) * 0.08, x = g < 0 ? 0 : u, w = (m) => (m - r) / (i - r) * 388, _ = (m) => 110 - (m - u) / (y - u) * 110, ze = z(f.charger, 70), K = z(f.home, 35), ne = e.map((m) => {
@@ -1916,7 +1924,7 @@ je.properties = {
     `
 ];
 let ct = je;
-H("charging-coordinator-price-card-editor", Ce([Pe, Oe], Dr));
+H("charging-coordinator-price-card-editor", Ce([Pe, Oe], Br));
 H("charging-coordinator-price-card", ct);
 Le(
   "charging-coordinator-price-card",
@@ -1927,11 +1935,11 @@ const Qt = [
   { value: "tiles", label: "Tiles: one tile per car" },
   { value: "rows", label: "Rows: one compact row per car" },
   { value: "spotlight", label: "Spotlight: the connected car large" }
-], qr = [
+], Kr = [
   { key: "connected_vehicle", domain: "sensor", label: "Connected vehicle (lists the cars)" },
   { key: "vehicle_connected", domain: "binary_sensor", label: "Cable at the charger" },
   { key: "charger_power", domain: "sensor", label: "Charger power" }
-], Kr = 100, ft = class ft extends N {
+], Zr = 100, ft = class ft extends N {
   getCardSize() {
     var e;
     return ((e = this._config) == null ? void 0 : e.layout) === "rows" ? 2 : 3;
@@ -1953,7 +1961,7 @@ const Qt = [
   cars() {
     var r;
     if (!this.hass) return [];
-    const e = ((r = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : r.state) !== "off", t = (v(this.entity("sensor", "charger_power")) ?? 0) >= Kr;
+    const e = ((r = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : r.state) !== "off", t = (v(this.entity("sensor", "charger_power")) ?? 0) >= Zr;
     return Zt(this.hass, this.entity("sensor", "connected_vehicle")).map((i) => ({
       ...i,
       status: i.connected && e ? t ? "charging" : "plugged" : "off"
@@ -2369,7 +2377,7 @@ H(
       },
       Oe
     ],
-    qr
+    Kr
   )
 );
 H("charging-coordinator-vehicle-card", lt);
@@ -2378,7 +2386,7 @@ Le(
   "Charging Coordinator vehicles",
   "Your cars with picture, state of charge, target and whether they are plugged in"
 );
-const Zr = [
+const Jr = [
   { key: "status", domain: "sensor", label: "Status" },
   { key: "active_control", domain: "switch", label: "Active control" },
   { key: "charge_mode", domain: "select", label: "Charge mode" },
@@ -2412,11 +2420,11 @@ function Re(n) {
   const e = Math.max(0, Math.round(n));
   return e >= 60 ? `${Math.floor(e / 60)}:${String(e % 60).padStart(2, "0")} min` : `${e} s`;
 }
-function Jr(n) {
+function Qr(n) {
   return n && n[0].toUpperCase() + n.slice(1);
 }
-const $e = 388, xe = 140, Ft = 122, re = 262, X = 168, le = 216, S = { x: 192, top: 6, w: 40, h: 44 }, D = 26, B = 112, Qr = 36, ei = 6e3, F = 30;
-function ti(n) {
+const $e = 388, xe = 140, Ft = 122, re = 262, X = 168, le = 216, S = { x: 192, top: 6, w: 40, h: 44 }, D = 26, B = 112, ei = 36, ti = 6e3, F = 30;
+function ri(n) {
   return Math.min(6, Math.max(0.9, 4e3 / (n + 400)));
 }
 function de(n, e) {
@@ -2428,11 +2436,11 @@ function _e(n) {
 function V(...n) {
   return n.map((e) => typeof e == "number" && !Number.isInteger(e) ? e.toFixed(1) : String(e)).join(" ");
 }
-let ri = 0;
+let ii = 0;
 const We = class We extends N {
   constructor() {
     var e;
-    super(...arguments), this._menu = null, this._menuPos = { left: 16, top: 56 }, this._uid = `ccc${++ri}`, this._reducedMotion = ((e = window.matchMedia) == null ? void 0 : e.call(window, "(prefers-reduced-motion: reduce)").matches) ?? !1;
+    super(...arguments), this._menu = null, this._menuPos = { left: 16, top: 56 }, this._uid = `ccc${++ii}`, this._reducedMotion = ((e = window.matchMedia) == null ? void 0 : e.call(window, "(prefers-reduced-motion: reduce)").matches) ?? !1;
   }
   getCardSize() {
     return 5;
@@ -2570,7 +2578,7 @@ const We = class We extends N {
   }
   renderHeadline(e, t) {
     var w, _;
-    const r = (w = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : w.state, i = ((_ = this.entity("binary_sensor", "target_enabled")) == null ? void 0 : _.state) === "on", s = v(this.entity("sensor", "charger_power")), o = v(this.entity("sensor", "target_current")), a = v(this.entity("sensor", "target_phases")), c = e.state, d = c.indexOf(": "), g = Jr(d >= 0 ? c.slice(d + 2) : c);
+    const r = (w = this.entity("binary_sensor", "vehicle_connected")) == null ? void 0 : w.state, i = ((_ = this.entity("binary_sensor", "target_enabled")) == null ? void 0 : _.state) === "on", s = v(this.entity("sensor", "charger_power")), o = v(this.entity("sensor", "target_current")), a = v(this.entity("sensor", "target_phases")), c = e.state, d = c.indexOf(": "), g = Qr(d >= 0 ? c.slice(d + 2) : c);
     let u, y = "", x = "";
     return r === void 0 || r === "unknown" || r === "unavailable" ? (u = "Waiting for charger data", x = "muted") : r === "off" ? (u = "No vehicle connected", y = t === "off" ? "Charging is off" : "", x = "muted") : t === "off" ? (u = "Charging off", x = "muted") : i && (s ?? 0) > 100 ? (u = `Charging · ${j(s)}`, y = a && o ? `${a}p · ${o} A` : "", x = "charging") : i ? (u = "Ready", y = "Charging released, the vehicle is not drawing power") : (u = "Paused", y = /^(enabling|disabling) in /i.test(g) ? "" : g), l`
       <div class="headline ${x}">
@@ -2581,7 +2589,7 @@ const We = class We extends N {
   }
   renderFlow(e) {
     var xt;
-    const t = v(this.entity("sensor", "grid_power")), r = v(this.entity("sensor", "pv_dc_power")), i = v(this.entity("sensor", "pv_inverter_power")), s = r === void 0 && i === void 0 ? void 0 : (r ?? 0) + (i ?? 0), o = v(this.entity("sensor", "battery_power")), a = v(this.entity("sensor", "battery_soc")), c = v(this.entity("sensor", "charger_power")), d = ((xt = this.entity("binary_sensor", "battery_hold")) == null ? void 0 : xt.state) === "on", g = t === void 0 ? void 0 : t + (s ?? 0) + (o ?? 0) - (c ?? 0), u = Math.max(0, s ?? 0), y = Math.max(0, t ?? 0), x = Math.max(0, o ?? 0), w = Math.max(0, -(o ?? 0)), _ = Math.min(w, Math.max(0, r ?? 0)), ze = w - _, K = Math.min(u - _, Math.max(0, -(t ?? 0))), ne = Math.max(0, g ?? 0), T = Math.max(0, c ?? 0), Ye = Qr / Math.max(u + y + x, ei), I = (b) => b > F ? Math.max(2, b * Ye) : 0, m = I(_), k = I(K), W = I(u - _ - K), Z = I(y), R = W + Z, J = I(ze), ae = I(x), U = Math.max(0, R - J + ae), bt = ne > F ? ne : 0, vt = T > F ? T : 0, Ne = bt + vt, qe = Ne > 0 ? U * bt / Ne : 0, He = Ne > 0 ? U * vt / Ne : 0, Ke = K > F || (t ?? 0) < -F ? f.gridOut : f.gridIn, Ze = d ? f.hold : (o ?? 0) < -F ? f.batteryIn : (o ?? 0) > F ? f.batteryOut : f.home, yt = T > F ? f.charger : f.idle, A = B + Math.max(R, U) / 2, M = S.x, fe = S.top + S.h, C = Ft, Te = D - (m + W + k) / 2, er = (b) => {
+    const t = v(this.entity("sensor", "grid_power")), r = v(this.entity("sensor", "pv_dc_power")), i = v(this.entity("sensor", "pv_inverter_power")), s = r === void 0 && i === void 0 ? void 0 : (r ?? 0) + (i ?? 0), o = v(this.entity("sensor", "battery_power")), a = v(this.entity("sensor", "battery_soc")), c = v(this.entity("sensor", "charger_power")), d = ((xt = this.entity("binary_sensor", "battery_hold")) == null ? void 0 : xt.state) === "on", g = t === void 0 ? void 0 : t + (s ?? 0) + (o ?? 0) - (c ?? 0), u = Math.max(0, s ?? 0), y = Math.max(0, t ?? 0), x = Math.max(0, o ?? 0), w = Math.max(0, -(o ?? 0)), _ = Math.min(w, Math.max(0, r ?? 0)), ze = w - _, K = Math.min(u - _, Math.max(0, -(t ?? 0))), ne = Math.max(0, g ?? 0), T = Math.max(0, c ?? 0), Ye = ei / Math.max(u + y + x, ti), I = (b) => b > F ? Math.max(2, b * Ye) : 0, m = I(_), k = I(K), W = I(u - _ - K), Z = I(y), R = W + Z, J = I(ze), ae = I(x), U = Math.max(0, R - J + ae), bt = ne > F ? ne : 0, vt = T > F ? T : 0, Ne = bt + vt, qe = Ne > 0 ? U * bt / Ne : 0, He = Ne > 0 ? U * vt / Ne : 0, Ke = K > F || (t ?? 0) < -F ? f.gridOut : f.gridIn, Ze = d ? f.hold : (o ?? 0) < -F ? f.batteryIn : (o ?? 0) > F ? f.batteryOut : f.home, yt = T > F ? f.charger : f.idle, A = B + Math.max(R, U) / 2, M = S.x, fe = S.top + S.h, C = Ft, Te = D - (m + W + k) / 2, er = (b) => {
       const p = _e(b), $ = Te + m + b / 2, E = A - R + b / 2, ce = X - 1 - 2 * p;
       return V(
         "M",
@@ -2800,7 +2808,7 @@ const We = class We extends N {
     return this._reducedMotion || r <= F ? h : O`<path class="pulse" d=${e}
       style="stroke-width: ${Math.min(4, Math.max(2, t * 0.4)).toFixed(1)}">
       <animate attributeName="stroke-dashoffset" from="0" to="-36"
-        dur="${ti(r).toFixed(2)}s" repeatCount="indefinite"></animate>
+        dur="${ri(r).toFixed(2)}s" repeatCount="indefinite"></animate>
     </path>`;
   }
   renderSide(e, t, r, i, s, o) {
@@ -3182,7 +3190,7 @@ We.properties = {
     }
   `;
 let dt = We;
-H("charging-coordinator-card-editor", Ce([Pe, Oe], Zr));
+H("charging-coordinator-card-editor", Ce([Pe, Oe], Jr));
 H("charging-coordinator-card", dt);
 Le(
   "charging-coordinator-card",
