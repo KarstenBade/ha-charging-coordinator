@@ -23,6 +23,7 @@ import "./control-card";
 import "./battery-card";
 import "./price-card";
 import "./vehicle-card";
+import "./priority-card";
 
 type CardConfig = BaseConfig;
 

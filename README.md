@@ -139,6 +139,10 @@ It stacks well above the compact control card.
 
 `custom:charging-coordinator-battery-card`: the home battery's level against the three priority levels, in words (*below 20 %, PV charges the battery before the car*). Drag a marker, or focus it and use the arrow keys, to change `priority_soc`, `buffer_soc` or `buffer_start_soc`; at 0 % a level is off. Below are the two battery hold switches.
 
+### Battery priority
+
+`custom:charging-coordinator-priority-card`: one low row for the level up to which PV charges the home battery before the car (`priority_soc`). It looks like the vehicle card's SoC bar: the home battery as a green bar filled to its current level, with the number beside it, and the setting as an orange tick. Drag the orange triangle on top to change the level (in 5 % steps), or focus it and use the arrow keys (1 %). At 0 % it is off. Hover the battery for a sentence on what happens right now.
+
 ### Prices
 
 `custom:charging-coordinator-price-card`: prices as bars with the limit as a line. Bars at or below the limit, where *Cheap price* charging draws from the grid, are green, and the summary says when the next such stretch starts and how long it lasts. Tap a bar to use its price as the limit. The forecast is read from your price sensor's attributes; common formats work without configuration (Nord Pool `raw_today`/`raw_tomorrow` or `today`/`tomorrow`, ENTSO-e `prices`, EPEX Spot `data`, lists of `{start, value}`/`{startsAt, total}`). Without a forecast, the card shows today's recorded prices so far.

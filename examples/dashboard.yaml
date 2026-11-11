@@ -32,6 +32,9 @@ views:
             compact: true
             grid_options:
               columns: full
+          - type: custom:charging-coordinator-priority-card
+            grid_options:
+              columns: full
 
       - type: grid
         cards:
