@@ -1023,14 +1023,14 @@ const Br = [
   }
   // --- full -------------------------------------------------------------------
   renderFull(e) {
-    var a;
-    const t = Be.find((c) => c.value === e), r = e === "smart", i = r && this.sourceOn("smart_price"), s = ((a = this.entity("switch", "block_battery_on_cheap_price")) == null ? void 0 : a.state) === "on", o = r && !i && !this.sourceOn("smart_pv");
+    var a, c;
+    const t = Be.find((d) => d.value === e), r = e === "smart", i = r && this.sourceOn("smart_price"), s = ((a = this.entity("switch", "block_battery_on_cheap_price")) == null ? void 0 : a.state) === "on", o = r && !i && !this.sourceOn("smart_pv");
     return l`
       ${this.renderModeButtons(e, !1)}
       <p class="description">${(t == null ? void 0 : t.description) ?? "Unknown mode."}</p>
       ${r ? this.renderSources(!1) : h}
       ${o ? l`<p class="hint warn">Switch on PV surplus or Cheap price, or the car won't charge.</p>` : h}
-      ${i || s ? this.renderLimit(i) : h}
+      ${(i || s) && !((c = this._config) != null && c.hide_price_limit) ? this.renderLimit(i) : h}
       ${i ? this.renderGridMax() : h}
     `;
   }
@@ -1090,12 +1090,13 @@ const Br = [
   }
   // --- compact ----------------------------------------------------------------
   renderCompact(e) {
+    var r;
     let t;
     if (e === "smart") {
-      const r = this.sourceOn("smart_price"), i = !r && !this.sourceOn("smart_pv");
+      const i = this.sourceOn("smart_price"), s = !i && !this.sourceOn("smart_pv");
       t = l`${this.renderSources(!0)}
-        ${r ? this.renderCompactLimit() : h}
-        ${i ? l`<p class="hint warn">Switch one on, or the car won't charge.</p>` : h}`;
+        ${i && !((r = this._config) != null && r.hide_price_limit) ? this.renderCompactLimit() : h}
+        ${s ? l`<p class="hint warn">Switch one on, or the car won't charge.</p>` : h}`;
     } else
       t = l`<p class="hint">
         ${e === "now" ? "Charging at full power from any source." : "Not charging."}
@@ -1396,6 +1397,11 @@ H(
   Ce([
     Pe,
     { name: "compact", label: "Compact (no explanations)", selector: { boolean: {} } },
+    {
+      name: "hide_price_limit",
+      label: "Hide the price limit (e.g. with two fixed tariff zones)",
+      selector: { boolean: {} }
+    },
     Oe
   ], Br)
 );
@@ -2160,9 +2166,6 @@ bt.styles = [
         display: grid;
         place-items: center;
         color: var(--secondary-text-color);
-      }
-      .off .pic {
-        opacity: 0.55;
       }
 
       /* SoC bar with the target as a tick */

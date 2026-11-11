@@ -22,6 +22,8 @@ import {
  */
 interface ControlConfig extends BaseConfig {
   compact?: boolean;
+  // e.g. with two fixed tariff zones, where the limit simply sits between them
+  hide_price_limit?: boolean;
 }
 
 /** Every entity the card uses; each can be mapped in the card's `entities`. */
@@ -122,7 +124,9 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
       <p class="description">${current?.description ?? "Unknown mode."}</p>
       ${smart ? this.renderSources(false) : nothing}
       ${idle ? html`<p class="hint warn">Switch on PV surplus or Cheap price, or the car won't charge.</p>` : nothing}
-      ${pricing || holdOnCheap ? this.renderLimit(pricing) : nothing}
+      ${(pricing || holdOnCheap) && !this._config?.hide_price_limit
+        ? this.renderLimit(pricing)
+        : nothing}
       ${pricing ? this.renderGridMax() : nothing}
     `;
   }
@@ -210,7 +214,7 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
       const pricing = this.sourceOn("smart_price");
       const idle = !pricing && !this.sourceOn("smart_pv");
       rest = html`${this.renderSources(true)}
-        ${pricing ? this.renderCompactLimit() : nothing}
+        ${pricing && !this._config?.hide_price_limit ? this.renderCompactLimit() : nothing}
         ${idle ? html`<p class="hint warn">Switch one on, or the car won't charge.</p>` : nothing}`;
     } else {
       rest = html`<p class="hint">
@@ -519,6 +523,11 @@ define(
   simpleEditor([
     TITLE_FIELD,
     { name: "compact", label: "Compact (no explanations)", selector: { boolean: {} } },
+    {
+      name: "hide_price_limit",
+      label: "Hide the price limit (e.g. with two fixed tariff zones)",
+      selector: { boolean: {} },
+    },
     PREFIX_FIELD,
   ], SLOTS),
 );

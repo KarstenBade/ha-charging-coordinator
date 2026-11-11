@@ -300,9 +300,6 @@ class ChargingCoordinatorVehicleCard extends CoordinatorCard<VehicleCardConfig> 
         place-items: center;
         color: var(--secondary-text-color);
       }
-      .off .pic {
-        opacity: 0.55;
-      }
 
       /* SoC bar with the target as a tick */
       .bar {

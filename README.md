@@ -121,7 +121,7 @@ The `vehicles:` option of 0.3.0 and earlier is gone; set the cars up in the inte
 
 ### Charging control
 
-`custom:charging-coordinator-control-card`: *Off*, *Smart* and *Now*, with a sentence on what the chosen mode does. In *Smart*, the switches *PV surplus* and *Cheap price* appear. The price limit, on a scale next to the current price ("above your limit: grid charging waits"), and max grid power appear only while *Cheap price* is on. The full card also shows the limit while *Hold battery on cheap price* is on, because that hold uses it too. With `compact: true` it shows the same controls without explanations, for phones.
+`custom:charging-coordinator-control-card`: *Off*, *Smart* and *Now*, with a sentence on what the chosen mode does. In *Smart*, the switches *PV surplus* and *Cheap price* appear. The price limit, on a scale next to the current price ("above your limit: grid charging waits"), and max grid power appear only while *Cheap price* is on. The full card also shows the limit while *Hold battery on cheap price* is on, because that hold uses it too. With `compact: true` it shows the same controls without explanations, for phones. `hide_price_limit: true` leaves out the price limit and current price, e.g. with two fixed tariff zones where the limit just sits between them.
 
 ### Vehicles
 
@@ -129,7 +129,7 @@ The `vehicles:` option of 0.3.0 and earlier is gone; set the cars up in the inte
 
 | `layout` | Looks like |
 |---|---|
-| `tiles` (default) | One tile per car, the connected one outlined green |
+| `tiles` (default) | One tile per car, the connected one outlined in green |
 | `rows` | One compact row per car, a green dot marks the connected one |
 | `spotlight` | The connected car large, the others as one line each |
 
