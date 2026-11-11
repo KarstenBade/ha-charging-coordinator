@@ -5,12 +5,15 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, State
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_mqtt_message,
+    mock_restore_cache,
 )
 
 from custom_components.charging_coordinator.const import DOMAIN
@@ -94,7 +97,7 @@ async def test_shadow_mode_computes_but_writes_nothing(
     hass.states.async_set("sensor.price", "0.30")
     entry = await setup(hass)
     assert hass.states.get("switch.charging_coordinator_active_control").state == "off"
-    assert hass.states.get("select.charging_coordinator_charge_mode").state == "pv"
+    assert hass.states.get("select.charging_coordinator_charge_mode").state == "smart"
 
     goe_state(hass, car=3, frc=1, amp=6, psm=1, nrg="[230,230,230,0,0,0,0,0,0,0,0,0,0,0,0,0]")
     await hass.async_block_till_done()
@@ -213,24 +216,147 @@ async def test_charger_values_unknown_until_charger_data(
     assert hass.states.get("sensor.charging_coordinator_site_power").state == "10000.0"
 
 
-async def test_connected_vehicle_is_cleared_on_unplug(
-    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+def vehicle(sub_id: str, name: str, flag: str) -> dict[str, Any]:
+    return {
+        "subentry_id": sub_id,
+        "subentry_type": "vehicle",
+        "title": name,
+        "unique_id": None,
+        "data": {
+            "soc_entity": f"sensor.{flag}_soc",
+            "connected_template": f"{{{{ is_state('input_boolean.{flag}_plugged', 'on') }}}}",
+            "image": f"/local/{flag}.png",
+        },
+    }
+
+
+async def setup_with_vehicles(hass: HomeAssistant) -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=CONFIG,
+        unique_id=DOMAIN,
+        subentries_data=[vehicle("sub3", "ID.3", "id3"), vehicle("sub7", "ID.7", "id7")],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def test_newest_connected_template_wins(
+    hass: HomeAssistant,
+    mqtt_mock: MagicMock,
+    mock_devices: dict[str, AsyncMock],
+    freezer: FrozenDateTimeFactory,
 ) -> None:
-    entry = await setup(hass)
+    entry = await setup_with_vehicles(hass)
     goe_state(hass, car=3, frc=1, amp=6, psm=1, nrg="[230,230,230,0,0,0,0,0,0,0,0,0,0,0,0,0]")
     await hass.async_block_till_done()
     await feed_and_tick(hass, entry, grid=500)
+    sensor = "sensor.charging_coordinator_connected_vehicle"
+    assert hass.states.get(sensor).state == "none"
 
-    await hass.services.async_call(
-        "text",
-        "set_value",
-        {"entity_id": "text.charging_coordinator_connected_vehicle", "value": "ID.7"},
-        blocking=True,
-    )
-    await feed_and_tick(hass, entry, grid=500)
-    assert hass.states.get("text.charging_coordinator_connected_vehicle").state == "ID.7"
+    hass.states.async_set("input_boolean.id3_plugged", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor).state == "ID.3"
+    id3 = hass.states.get("binary_sensor.charging_coordinator_id_3_connected")
+    assert id3.state == "on" and id3.attributes["entity_picture"] == "/local/id3.png"
 
-    goe_state(hass, car=1)  # unplugged
+    # Tibber still reports the ID.3 as plugged in when the ID.7 arrives
+    freezer.tick(60)
+    hass.states.async_set("input_boolean.id7_plugged", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor).state == "ID.7"
+    cars = hass.states.get(sensor).attributes["vehicles"]
+    assert [(c["name"], c["connected"]) for c in cars] == [("ID.3", True), ("ID.7", True)]
+    assert cars[1]["soc_entity"] == "sensor.id7_soc"
+
+    hass.states.async_set("input_boolean.id7_plugged", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor).state == "ID.3"
+
+    goe_state(hass, car=1)  # no cable at the charger: no car, whatever the templates say
     await hass.async_block_till_done()
     await feed_and_tick(hass, entry, grid=500)
-    assert hass.states.get("text.charging_coordinator_connected_vehicle").state == ""
+    assert hass.states.get(sensor).state == "none"
+    assert hass.states.get("binary_sensor.charging_coordinator_id_3_connected").state == "on"
+
+
+async def test_connected_since_survives_a_restart(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    hass.states.async_set("input_boolean.id3_plugged", "on")
+    hass.states.async_set("input_boolean.id7_plugged", "on")
+    mock_restore_cache(
+        hass,
+        [
+            State(
+                "binary_sensor.charging_coordinator_id_3_connected",
+                "on",
+                {"connected_since": "2026-11-10T20:00:00+00:00"},
+            ),
+            State(
+                "binary_sensor.charging_coordinator_id_7_connected",
+                "on",
+                {"connected_since": "2026-11-11T07:00:00+00:00"},
+            ),
+        ],
+    )
+    entry = await setup_with_vehicles(hass)
+    goe_state(hass, car=2)
+    await hass.async_block_till_done()
+    await feed_and_tick(hass, entry, grid=500)
+    assert hass.states.get("sensor.charging_coordinator_connected_vehicle").state == "ID.7"
+
+
+async def test_legacy_charge_mode_is_migrated(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    mock_restore_cache(hass, [State("select.charging_coordinator_charge_mode", "pv_grid")])
+    entry = await setup(hass)
+    settings = entry.runtime_data.settings
+    assert settings.charge_mode == "smart" and settings.smart_pv and settings.smart_price
+    await feed_and_tick(hass, entry, grid=500)
+    assert hass.states.get("select.charging_coordinator_charge_mode").state == "smart"
+    assert hass.states.get("switch.charging_coordinator_smart_price").state == "on"
+
+
+async def test_old_connected_vehicle_text_entity_is_removed(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data=CONFIG, unique_id=DOMAIN)
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "text", DOMAIN, f"{entry.entry_id}_connected_vehicle", config_entry=entry
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert (
+        registry.async_get_entity_id("text", DOMAIN, f"{entry.entry_id}_connected_vehicle") is None
+    )
+
+
+async def test_vehicle_subentry_flow(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    entry = await setup_with_vehicles(hass)
+    result = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "vehicle"), context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] is FlowResultType.FORM
+    user_input = {
+        "name": "id.3",
+        "soc_entity": "sensor.e_up_soc",
+        "connected_template": "{{ true }}",
+    }
+    result = await hass.config_entries.subentries.async_configure(result["flow_id"], user_input)
+    assert result["errors"] == {"name": "name_exists"}
+
+    user_input |= {"name": " e-up! ", "image": " "}
+    result = await hass.config_entries.subentries.async_configure(result["flow_id"], user_input)
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    created = [s for s in entry.subentries.values() if s.title == "e-up!"]
+    assert len(created) == 1
+    assert created[0].data == {"soc_entity": "sensor.e_up_soc", "connected_template": "{{ true }}"}

@@ -36,7 +36,6 @@ const SLOT_DOMAINS: Record<string, string[]> = {
   select: ["select", "input_select"],
   number: ["number", "input_number"],
   switch: ["switch", "input_boolean"],
-  text: ["text", "input_text"],
   forecast: ["sensor"], // any sensor whose attributes hold the prices
 };
 
@@ -66,29 +65,46 @@ export const CHARGE_MODES: ModeOption[] = [
     description: "The car doesn't charge.",
   },
   {
-    value: "pv",
-    label: "PV",
-    icon: "mdi:solar-power",
-    icons: ["mdi:solar-power"],
-    color: "var(--energy-solar-color, #ff9800)",
-    description: "Charges only from PV surplus, after a short delay once there is enough.",
-  },
-  {
-    value: "pv_grid",
-    label: "PV + grid",
-    icon: "mdi:transmission-tower-import",
-    icons: ["mdi:solar-power", "mdi:transmission-tower"],
-    color: "var(--energy-grid-consumption-color, #488fc2)",
-    description:
-      "Charges from PV surplus, and also from the grid while the price is at or below your limit.",
+    value: "smart",
+    label: "Smart",
+    icon: "mdi:auto-fix",
+    icons: ["mdi:auto-fix"],
+    color: "var(--primary-color, #03a9f4)",
+    description: "Charges only when it's worth it. Pick which reasons count.",
   },
   {
     value: "now",
     label: "Now",
     icon: "mdi:lightning-bolt",
     icons: ["mdi:lightning-bolt"],
+    color: "var(--error-color, #db4437)",
+    description: "Charges at full power right away, from PV, battery and grid alike.",
+  },
+];
+
+export interface SmartSource {
+  key: "smart_pv" | "smart_price";
+  label: string;
+  icon: string;
+  color: string;
+  description: string;
+}
+
+/** What smart mode may charge from; each is a switch of the integration. */
+export const SMART_SOURCES: SmartSource[] = [
+  {
+    key: "smart_pv",
+    label: "PV surplus",
+    icon: "mdi:solar-power",
+    color: "var(--energy-solar-color, #ff9800)",
+    description: "Charge with power that would otherwise be exported.",
+  },
+  {
+    key: "smart_price",
+    label: "Cheap price",
+    icon: "mdi:tag",
     color: "var(--success-color, #43a047)",
-    description: "Charges at full power right away, from any source.",
+    description: "Also charge from the grid while the price is at or below the limit.",
   },
 ];
 
@@ -130,6 +146,49 @@ export function formatPower(watts: number | undefined): string {
 
 export function formatPrice(price: number | undefined): string {
   return price === undefined ? "–" : price.toFixed(3);
+}
+
+// --- vehicles -----------------------------------------------------------------
+
+/** A car as set up in the integration, with its current values. */
+export interface Vehicle {
+  name: string;
+  connected: boolean; // its own template, so two cars can both be true
+  soc?: number;
+  target?: number;
+  range?: number;
+  rangeUnit?: string;
+  image?: string;
+  socEntity?: string;
+}
+
+interface VehicleAttribute {
+  name?: string;
+  connected?: boolean;
+  soc_entity?: string | null;
+  target_soc_entity?: string | null;
+  range_entity?: string | null;
+  image?: string | null;
+}
+
+/** The cars listed in the integration's connected vehicle sensor. */
+export function readVehicles(hass: Hass, sensor: HassEntity | undefined): Vehicle[] {
+  const list = sensor?.attributes.vehicles;
+  if (!Array.isArray(list)) return [];
+  const value = (id: string | null | undefined) => (id ? num(hass.states[id]) : undefined);
+  return (list as VehicleAttribute[]).map((v, i) => {
+    const range = v.range_entity ? hass.states[v.range_entity] : undefined;
+    return {
+      name: v.name || `Vehicle ${i + 1}`,
+      connected: v.connected === true,
+      soc: value(v.soc_entity),
+      target: value(v.target_soc_entity),
+      range: num(range),
+      rangeUnit: (range?.attributes.unit_of_measurement as string | undefined) ?? "km",
+      image: v.image || undefined,
+      socEntity: v.soc_entity || undefined,
+    };
+  });
 }
 
 // --- base card ----------------------------------------------------------------
@@ -199,14 +258,6 @@ export class CoordinatorCard<C extends BaseConfig = BaseConfig> extends LitEleme
     const entityId = this.entityId("switch", key);
     await this.hass?.callService(domainOf(entityId), on ? "turn_on" : "turn_off", {
       entity_id: entityId,
-    });
-  }
-
-  protected async setText(key: string, value: string): Promise<void> {
-    const entityId = this.entityId("text", key);
-    await this.hass?.callService(domainOf(entityId), "set_value", {
-      entity_id: entityId,
-      value,
     });
   }
 

@@ -50,11 +50,11 @@ def ctl() -> Controller:
     c = Controller()
     # simulate an already connected vehicle so connect transitions don't elapse timers
     c._was_connected = True
-    c._last_mode = ChargeMode.PV
+    c._last_mode = ChargeMode.SMART
     return c
 
 
-PV = Settings(charge_mode=ChargeMode.PV, unbalance_mode=UnbalanceMode.OFF)
+PV = Settings(charge_mode=ChargeMode.SMART, unbalance_mode=UnbalanceMode.OFF)
 
 
 def test_disconnected_disables() -> None:
@@ -223,27 +223,25 @@ def test_hold_switch_off_keeps_battery_normal(ctl: Controller) -> None:
     assert ctl.decide(meas(8000, ch), s, 0).battery_mode == BatteryMode.NORMAL
 
 
-PV_GRID = replace(
-    PV, charge_mode=ChargeMode.PV_GRID, price_threshold=0.20, grid_charge_max_power=11000
-)
+PV_GRID = replace(PV, smart_price=True, price_threshold=0.20, grid_charge_max_power=11000)
 
 
-def test_pv_grid_expensive_behaves_like_pv(ctl: Controller) -> None:
-    ctl._last_mode = ChargeMode.PV_GRID
+def test_smart_price_expensive_behaves_like_pv_only(ctl: Controller) -> None:
+    ctl._last_mode = ChargeMode.SMART
     d = ctl.decide(meas(500, charger(), price=0.30), PV_GRID, 0)
     assert not d.enabled and not d.price_cheap
-    assert d.status.startswith("pv_grid (0.300 > 0.200)")
+    assert d.status.startswith("smart (0.300 > 0.200)")
 
 
-def test_pv_grid_cheap_starts_immediately_capped_by_grid(ctl: Controller) -> None:
-    ctl._last_mode = ChargeMode.PV_GRID
+def test_smart_price_cheap_starts_immediately_capped_by_grid(ctl: Controller) -> None:
+    ctl._last_mode = ChargeMode.SMART
     d = ctl.decide(meas(500, charger(phases=1), price=0.15), PV_GRID, 0)
     # 11000 - 500 W house = 10500 W >= 8000 W -> 3p start
     assert d.enabled and d.phases == 3 and d.price_cheap
 
 
-def test_pv_grid_cheap_limits_total_grid_import(ctl: Controller) -> None:
-    ctl._last_mode = ChargeMode.PV_GRID
+def test_smart_price_cheap_limits_total_grid_import(ctl: Controller) -> None:
+    ctl._last_mode = ChargeMode.SMART
     ctl._was_grid_cheap = True
     ch = charger(ChargerStatus.CHARGING, enabled=True, current=16, phases=3)
     # 11040 W EV + 1000 W house, no PV -> 12040 W import, 1040 W over the cap
@@ -251,18 +249,45 @@ def test_pv_grid_cheap_limits_total_grid_import(ctl: Controller) -> None:
     assert d.current == 14  # 16 - 1040 / 690 = 14.49
 
 
-def test_pv_grid_cheap_holds_battery_while_charging(ctl: Controller) -> None:
-    ctl._last_mode = ChargeMode.PV_GRID
+def test_smart_price_cheap_holds_battery_while_charging(ctl: Controller) -> None:
+    ctl._last_mode = ChargeMode.SMART
     ch = charger(ChargerStatus.CHARGING, enabled=True, current=16, phases=3)
     d = ctl.decide(meas(5000, ch, price=0.10, battery_power=0, battery_soc=50), PV_GRID, 0)
     assert d.battery_mode == BatteryMode.HOLD
 
 
 def test_price_unknown_is_never_cheap(ctl: Controller) -> None:
-    ctl._last_mode = ChargeMode.PV_GRID
+    ctl._last_mode = ChargeMode.SMART
     s = replace(PV_GRID, block_battery_on_cheap_price=True)
     d = ctl.decide(meas(500, charger()), s, 0)
     assert not d.price_cheap and not d.enabled and d.battery_mode == BatteryMode.NORMAL
+
+
+PRICE_ONLY = replace(PV_GRID, smart_pv=False)
+
+
+def test_price_only_waits_for_a_cheap_price_despite_surplus(ctl: Controller) -> None:
+    ch = charger(ChargerStatus.CHARGING, enabled=True, current=10, phases=3)
+    d = ctl.decide(meas(-6000, ch, price=0.30), PRICE_ONLY, 0)
+    assert d.valid and not d.enabled
+    assert d.status == "smart (0.300 > 0.200): waiting for a cheap price"
+
+
+def test_price_only_charges_at_a_cheap_price(ctl: Controller) -> None:
+    d = ctl.decide(meas(500, charger(phases=1), price=0.15), PRICE_ONLY, 0)
+    assert d.enabled and d.phases == 3 and d.price_cheap
+
+
+def test_smart_without_sources_does_not_charge(ctl: Controller) -> None:
+    s = replace(PV, smart_pv=False)
+    d = ctl.decide(meas(-6000, charger(), price=0.1), s, 0)
+    assert not d.enabled and d.status == "smart: no source enabled"
+
+
+def test_price_switch_off_ignores_cheap_price(ctl: Controller) -> None:
+    s = replace(PV_GRID, smart_price=False)
+    d = ctl.decide(meas(500, charger(), price=0.10), s, 0)
+    assert not d.enabled and d.price_cheap and d.status.startswith("smart:")
 
 
 def test_cheap_price_switch_holds_without_ev(ctl: Controller) -> None:
@@ -333,7 +358,7 @@ def test_charger_phase_mapping(ctl: Controller) -> None:
 
 
 def test_shadow_enable_is_not_undone_next_tick(ctl: Controller) -> None:
-    ctl._last_mode = ChargeMode.PV_GRID
+    ctl._last_mode = ChargeMode.SMART
     idle = charger(phases=3)  # stays disabled because nothing is written
     m = meas(500, idle, price=0.30)
     s = replace(PV_GRID, price_threshold=0.35)
@@ -434,7 +459,7 @@ def test_resync_adopts_immediately(ctl: Controller) -> None:
     _running_1p(ctl)
     ctl.resync()  # active control switched on
     d = ctl.decide(meas(-200, charger(enabled=False)), PV, 10, ACTIVE)
-    assert not d.enabled and d.status == "pv: waiting for surplus"
+    assert not d.enabled and d.status == "smart: waiting for surplus"
 
 
 def test_site_power_published_without_vehicle(ctl: Controller) -> None:

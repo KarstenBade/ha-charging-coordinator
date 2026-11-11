@@ -35,6 +35,7 @@ from .const import (
     DEFAULT_UNIT_ID,
     SMA_POLL_INTERVAL,
     SMA_STALE_AFTER,
+    SUBENTRY_VEHICLE,
 )
 from .core.controller import Controller
 from .core.models import BatteryMode, Decision, Measurements, Settings
@@ -49,6 +50,7 @@ from .devices.sma_modbus import (
     read_hybrid,
     read_pv_inverter,
 )
+from .vehicles import VehicleConfig, VehicleTracker, pick_connected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,8 +71,11 @@ class CoordinatorRuntime:
             ),
         )
         self.active_control = False
-        # name of the plugged-in car as picked in the card, "" = not picked
-        self.connected_vehicle = ""
+        self.vehicles = [
+            VehicleTracker(hass, VehicleConfig.from_subentry(sub), self._notify)
+            for sub in entry.subentries.values()
+            if sub.subentry_type == SUBENTRY_VEHICLE
+        ]
         self.controller = Controller()
         # monotonic deadline until which an invalid decision leaves the battery alone
         self._battery_wait_until: float | None = None
@@ -123,6 +128,8 @@ class CoordinatorRuntime:
         self._unsubs.append(
             async_track_time_interval(self.hass, self._async_tick, timedelta(seconds=interval))
         )
+        for vehicle in self.vehicles:
+            self._unsubs.append(vehicle.async_start())
         self.hass.async_create_task(self._async_poll_sma())
 
     async def async_stop(self) -> None:
@@ -146,6 +153,11 @@ class CoordinatorRuntime:
     def _notify(self) -> None:
         for listener in list(self._listeners):
             listener()
+
+    @property
+    def connected_vehicle(self) -> VehicleTracker | None:
+        charger = self.measurements.charger
+        return pick_connected(self.vehicles, charger.available and charger.connected)
 
     @callback
     def set_setting(self, key: str, value: Any) -> None:
@@ -232,10 +244,6 @@ class CoordinatorRuntime:
 
     async def _async_tick(self, _now: datetime | None = None) -> None:
         self.measurements = self._measurements()
-        charger = self.measurements.charger
-        if charger.available and not charger.connected:
-            # unplugged: the next car has to be picked again
-            self.connected_vehicle = ""
         decision = self.controller.decide(
             self.measurements, self.settings, time.monotonic(), self.active_control
         )

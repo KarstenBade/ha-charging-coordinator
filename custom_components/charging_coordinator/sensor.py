@@ -25,7 +25,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import ChargingCoordinatorConfigEntry
-from .const import CONF_PRICE_ENTITY
+from .const import CONF_PRICE_ENTITY, NO_VEHICLE
 from .core.models import BatteryMode
 from .entity import CoordinatorEntity
 from .runtime import CoordinatorRuntime
@@ -206,6 +206,15 @@ SENSORS: tuple[CoordinatorSensorDescription, ...] = (
         # the price card reads the forecast from the source sensor's attributes
         attrs_fn=lambda rt: {"source": rt.config.get(CONF_PRICE_ENTITY)},
         icon="mdi:currency-eur",
+    ),
+    CoordinatorSensorDescription(
+        key="connected_vehicle",
+        icon="mdi:car-electric",
+        # the car on the cable, or "none"; the vehicle card reads all cars from the attributes
+        value_fn=lambda rt: (
+            rt.connected_vehicle.config.name if rt.connected_vehicle else NO_VEHICLE
+        ),
+        attrs_fn=lambda rt: {"vehicles": [v.as_dict() for v in rt.vehicles]},
     ),
     _power("charger_power", _charger_power),
     _energy("charger_session_energy", lambda rt: rt.goe.data.session_energy),

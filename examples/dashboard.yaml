@@ -21,13 +21,15 @@ views:
           - type: heading
             heading: Coordinator
           - type: custom:charging-coordinator-card
-            # State of charge of your cars, e.g. from Tibber. Replace the entity IDs
-            # with yours (or pick them in the card editor); unknown ones show "–".
-            vehicles:
-              - name: ID.3
-                soc: sensor.id_3_battery_level
-              - name: ID.7
-                soc: sensor.id_7_battery_level
+            # cars are set up in the integration: Add vehicle on its page
+            grid_options:
+              columns: full
+          - type: custom:charging-coordinator-vehicle-card
+            layout: tiles
+            grid_options:
+              columns: full
+          - type: custom:charging-coordinator-control-card
+            compact: true
             grid_options:
               columns: full
 
@@ -57,6 +59,12 @@ views:
               - type: select-options
             grid_options:
               columns: full
+          - type: tile
+            entity: switch.charging_coordinator_smart_pv
+            name: "Smart: PV surplus"
+          - type: tile
+            entity: switch.charging_coordinator_smart_price
+            name: "Smart: cheap price"
           - type: tile
             entity: select.charging_coordinator_phase_mode
             name: Phases
@@ -100,7 +108,7 @@ views:
             entity: binary_sensor.charging_coordinator_vehicle_connected
             name: Vehicle
           - type: tile
-            entity: text.charging_coordinator_connected_vehicle
+            entity: sensor.charging_coordinator_connected_vehicle
             name: Plugged-in car
           - type: tile
             entity: binary_sensor.charging_coordinator_target_enabled
@@ -293,7 +301,7 @@ views:
               - entity: number.charging_coordinator_price_threshold
                 name: Price threshold
               - entity: number.charging_coordinator_grid_charge_max_power
-                name: Max grid power (pv_grid)
+                name: Max grid power (cheap price)
               - entity: switch.charging_coordinator_block_battery_on_ev_grid_charge
                 name: Hold battery on EV grid charge
               - entity: switch.charging_coordinator_block_battery_on_cheap_price

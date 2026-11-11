@@ -14,7 +14,12 @@ from . import ChargingCoordinatorConfigEntry
 from .entity import CoordinatorEntity, SettingEntity
 
 ACTIVE_CONTROL = "active_control"
-SETTING_SWITCHES = ("block_battery_on_ev_grid_charge", "block_battery_on_cheap_price")
+SETTING_SWITCHES = (
+    "smart_pv",
+    "smart_price",
+    "block_battery_on_ev_grid_charge",
+    "block_battery_on_cheap_price",
+)
 
 
 async def async_setup_entry(

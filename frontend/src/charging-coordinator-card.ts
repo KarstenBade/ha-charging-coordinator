@@ -1,36 +1,30 @@
-import { LitElement, css, html, nothing, svg, type SVGTemplateResult, type TemplateResult } from "lit";
+import { css, html, nothing, svg, type SVGTemplateResult, type TemplateResult } from "lit";
 import {
   CHARGE_MODES,
   COLORS,
   CoordinatorCard,
-  cleanEntities,
+  PREFIX_FIELD,
+  TITLE_FIELD,
   define,
-  entitiesSchema,
-  entityLabels,
   formatPower,
-  loadHaForm,
   num,
   pipeColor,
+  readVehicles,
   registerCard,
+  simpleEditor,
   type BaseConfig,
   type EntitySlot,
-  type Hass,
   type HassEntity,
   type Option,
+  type Vehicle,
 } from "./common";
 // the other cards register themselves when the bundle loads
 import "./control-card";
 import "./battery-card";
 import "./price-card";
+import "./vehicle-card";
 
-interface VehicleConfig {
-  name?: string;
-  soc?: string; // entity id of the vehicle's state of charge, e.g. from Tibber
-}
-
-interface CardConfig extends BaseConfig {
-  vehicles?: VehicleConfig[];
-}
+type CardConfig = BaseConfig;
 
 /** Every entity the card uses; each can be mapped in the card's `entities`. */
 const SLOTS: EntitySlot[] = [
@@ -46,7 +40,9 @@ const SLOTS: EntitySlot[] = [
   { key: "battery_hold", domain: "binary_sensor", label: "Battery hold" },
   { key: "charger_power", domain: "sensor", label: "Charger power" },
   { key: "vehicle_connected", domain: "binary_sensor", label: "Vehicle connected" },
-  { key: "connected_vehicle", domain: "text", label: "Plugged-in car (picked in the card)" },
+  { key: "connected_vehicle", domain: "sensor", label: "Connected vehicle (lists the cars)" },
+  { key: "smart_pv", domain: "switch", label: "Smart: PV surplus" },
+  { key: "smart_price", domain: "switch", label: "Smart: cheap price" },
   { key: "target_enabled", domain: "binary_sensor", label: "Charging released" },
   { key: "target_current", domain: "sensor", label: "Target current" },
   { key: "target_phases", domain: "sensor", label: "Target phases" },
@@ -121,17 +117,10 @@ function path(...parts: (string | number)[]): string {
     .join(" ");
 }
 
-interface Vehicle {
-  name: string;
-  soc: number | undefined;
-  entity?: string;
-}
-
 interface VehicleState {
   connected: boolean | undefined; // undefined: no charger data
   car?: Vehicle; // the plugged-in car, if known
   others: Vehicle[]; // shown in the bottom row
-  pickable: boolean; // the plugged-in car can be picked in the bottom row
 }
 
 // --- the card ---------------------------------------------------------------
@@ -149,13 +138,6 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
   private _uid = `ccc${++cardCount}`;
   private _reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
-  setConfig(config: CardConfig): void {
-    if (config.vehicles !== undefined && !Array.isArray(config.vehicles)) {
-      throw new Error("vehicles must be a list of {name, soc}");
-    }
-    super.setConfig(config);
-  }
-
   getCardSize(): number {
     return 5;
   }
@@ -165,7 +147,7 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
   }
 
   static getStubConfig(): Partial<CardConfig> {
-    return { vehicles: [] };
+    return {};
   }
 
   static getConfigElement(): HTMLElement {
@@ -177,30 +159,24 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
     await this.selectOption(key, option);
   }
 
-  private async pickVehicle(name: string): Promise<void> {
-    await this.setText("connected_vehicle", name);
-  }
-
-  /** Which configured car is plugged in: the only one, or the one picked in the card. */
+  /** The cars set up in the integration, and which one it takes as plugged in. */
   private vehicleState(): VehicleState {
-    const vehicles: Vehicle[] = (this._config?.vehicles ?? []).map((v, i) => ({
-      name: v.name || `Vehicle ${i + 1}`,
-      soc: v.soc ? num(this.hass?.states[v.soc]) : undefined,
-      entity: v.soc,
-    }));
+    const sensor = this.entity("sensor", "connected_vehicle");
+    const vehicles = this.hass ? readVehicles(this.hass, sensor) : [];
     const raw = this.entity("binary_sensor", "vehicle_connected")?.state;
     const connected = raw === "on" ? true : raw === "off" ? false : undefined;
-    const picked = this.entity("text", "connected_vehicle");
-    let car: Vehicle | undefined;
-    if (connected) {
-      car = vehicles.length === 1 ? vehicles[0] : vehicles.find((v) => v.name === picked?.state);
-    }
-    return {
-      connected,
-      car,
-      others: vehicles.filter((v) => v !== car),
-      pickable: connected === true && picked !== undefined && vehicles.length > 1,
-    };
+    const car = connected ? vehicles.find((v) => v.name === sensor?.state) : undefined;
+    return { connected, car, others: vehicles.filter((v) => v !== car) };
+  }
+
+  /** "Smart · PV + price": the mode with the sources smart mode uses. */
+  private modeLabel(mode: Option | undefined): string {
+    if (!mode) return "–";
+    if (mode.value !== "smart") return mode.label;
+    const pv = this.entity("switch", "smart_pv")?.state === "on";
+    const price = this.entity("switch", "smart_price")?.state === "on";
+    const sources = [pv ? "PV" : "", price ? "price" : ""].filter(Boolean).join(" + ");
+    return sources ? `Smart · ${sources}` : "Smart · nothing";
   }
 
   // --- render ---------------------------------------------------------------
@@ -230,7 +206,7 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
         ${this._config.title ? html`<div class="title">${this._config.title}</div>` : nothing}
         <div class="top">
           <div class="chips">
-            ${this.renderChip("mode", mode?.icon ?? "mdi:help", mode?.label ?? "–", "Charge mode")}
+            ${this.renderChip("mode", mode?.icon ?? "mdi:help", this.modeLabel(mode), "Charge mode")}
             ${this.renderChip(
               "phase",
               phaseMode?.icon ?? "mdi:sine-wave",
@@ -619,22 +595,15 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
   }
 
   private renderChargerSub(vehicles: VehicleState): TemplateResult {
-    const { connected, car, pickable } = vehicles;
+    const { connected, car } = vehicles;
     if (car) {
-      return html`<div class="car" title=${car.entity ?? ""}>
+      return html`<div class="car" title=${car.socEntity ?? ""}>
         <span>${car.name}</span>${this.renderSocBar(car.soc)}
         <b>${car.soc === undefined ? "–" : `${Math.round(car.soc)} %`}</b>
       </div>`;
     }
-    const text =
-      connected === undefined
-        ? "–"
-        : !connected
-          ? "No vehicle"
-          : pickable
-            ? "Which car?"
-            : "Vehicle connected";
-    return html`<div class="node-sub ${pickable ? "ask" : ""}">${text}</div>`;
+    const text = connected === undefined ? "–" : connected ? "Vehicle connected" : "No vehicle";
+    return html`<div class="node-sub">${text}</div>`;
   }
 
   private renderSocBar(soc: number | undefined) {
@@ -643,22 +612,14 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
     ></span>`;
   }
 
-  /** Cars that aren't at the charger; tap one to mark it as plugged in. */
+  /** Cars that aren't at the charger. */
   private renderVehicleChips(vehicles: VehicleState): TemplateResult[] {
-    const ask = vehicles.pickable && !vehicles.car;
-    return vehicles.others.map((v) => {
-      const content = html`<span class="vname">${v.name}</span>${this.renderSocBar(v.soc)}
-        <b>${v.soc === undefined ? "–" : `${Math.round(v.soc)} %`}</b>`;
-      return vehicles.pickable
-        ? html`<button
-            class="fact vehicle ${ask ? "ask" : ""}"
-            title="Mark ${v.name} as plugged in"
-            @click=${() => this.pickVehicle(v.name)}
-          >
-            ${content}
-          </button>`
-        : html`<span class="fact vehicle" title=${v.entity ?? ""}>${content}</span>`;
-    });
+    return vehicles.others.map(
+      (v) => html`<span class="fact vehicle" title=${v.socEntity ?? ""}>
+        <span class="vname">${v.name}</span>${this.renderSocBar(v.soc)}
+        <b>${v.soc === undefined ? "–" : `${Math.round(v.soc)} %`}</b>
+      </span>`,
+    );
   }
 
   private renderFacts(status: HassEntity, vehicles: VehicleState) {
@@ -935,9 +896,6 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
       font-size: 0.78rem;
       color: var(--secondary-text-color);
     }
-    .node-sub.ask {
-      color: var(--primary-color);
-    }
     .hold {
       color: var(--warning-color, #ffa600);
     }
@@ -992,17 +950,6 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
     .vehicle .vname {
       color: var(--secondary-text-color);
     }
-    button.fact {
-      border: 1px solid transparent;
-    }
-    button.fact:hover,
-    button.fact:focus-visible {
-      border-color: var(--divider-color);
-      outline: none;
-    }
-    button.fact.ask {
-      border: 1px dashed var(--primary-color);
-    }
 
     /* facts: next action, price, reasons */
     .facts {
@@ -1049,115 +996,7 @@ class ChargingCoordinatorCard extends CoordinatorCard<CardConfig> {
 
 // --- visual editor ----------------------------------------------------------
 
-const EDITOR_VEHICLE_SLOTS = 3;
-
-interface FormData {
-  title?: string;
-  prefix?: string;
-  entities?: Record<string, string>;
-  [key: string]: unknown;
-}
-
-const EDITOR_SCHEMA = [
-  { name: "title", selector: { text: {} } },
-  ...Array.from({ length: EDITOR_VEHICLE_SLOTS }, (_, i) => ({
-    type: "grid",
-    name: "",
-    schema: [
-      { name: `vehicle_${i + 1}_name`, selector: { text: {} } },
-      { name: `vehicle_${i + 1}_soc`, selector: { entity: { domain: "sensor" } } },
-    ],
-  })),
-  { name: "prefix", selector: { text: {} } },
-  entitiesSchema(SLOTS),
-];
-
-const EDITOR_LABELS: Record<string, string> = {
-  title: "Title (optional)",
-  prefix: "Entity prefix (only if you renamed the integration's entities)",
-};
-
-class ChargingCoordinatorCardEditor extends LitElement {
-  static properties = {
-    hass: { attribute: false },
-    _config: { state: true },
-  };
-
-  hass?: Hass;
-  private _config?: CardConfig;
-
-  setConfig(config: CardConfig): void {
-    this._config = config;
-  }
-
-  connectedCallback(): void {
-    super.connectedCallback();
-    void loadHaForm().then(() => this.requestUpdate());
-  }
-
-
-  private get data(): FormData {
-    const data: FormData = {
-      title: this._config?.title,
-      prefix: this._config?.prefix,
-      entities: this._config?.entities,
-    };
-    (this._config?.vehicles ?? []).slice(0, EDITOR_VEHICLE_SLOTS).forEach((v, i) => {
-      data[`vehicle_${i + 1}_name`] = v.name;
-      data[`vehicle_${i + 1}_soc`] = v.soc;
-    });
-    return data;
-  }
-
-  private changed(ev: CustomEvent<{ value: FormData }>): void {
-    if (!this._config) return;
-    const value = ev.detail.value;
-    const vehicles: VehicleConfig[] = [];
-    for (let i = 1; i <= EDITOR_VEHICLE_SLOTS; i++) {
-      const name = value[`vehicle_${i}_name`] as string | undefined;
-      const soc = value[`vehicle_${i}_soc`] as string | undefined;
-      if (name || soc) vehicles.push({ ...(name ? { name } : {}), ...(soc ? { soc } : {}) });
-    }
-    // keep vehicles beyond the editor's slots that were added in YAML
-    vehicles.push(...(this._config.vehicles ?? []).slice(EDITOR_VEHICLE_SLOTS));
-
-    const config: CardConfig = { ...this._config, vehicles };
-    for (const key of ["title", "prefix"] as const) {
-      if (value[key]) config[key] = value[key];
-      else delete config[key];
-    }
-    const entities = cleanEntities(value.entities);
-    if (entities) config.entities = entities;
-    else delete config.entities;
-    this._config = config;
-    this.dispatchEvent(
-      new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }),
-    );
-  }
-
-  protected render(): TemplateResult | typeof nothing {
-    if (!this.hass || !this._config) return nothing;
-    return html`
-      <ha-form
-        .hass=${this.hass}
-        .data=${this.data}
-        .schema=${EDITOR_SCHEMA}
-        .computeHelper=${(s: { name: string }) =>
-          entityLabels(SLOTS, this._config?.prefix).helper(s.name)}
-        .computeLabel=${(s: { name: string }) => {
-          if (EDITOR_LABELS[s.name]) return EDITOR_LABELS[s.name];
-          const slot = entityLabels(SLOTS, this._config?.prefix).label(s.name);
-          if (slot) return slot;
-          const m = /^vehicle_(\d)_(name|soc)$/.exec(s.name);
-          return m ? `Vehicle ${m[1]} ${m[2] === "name" ? "name" : "SoC sensor"}` : s.name;
-        }}
-        @value-changed=${this.changed}
-      ></ha-form>
-    `;
-  }
-}
-
-define("charging-coordinator-card-editor", ChargingCoordinatorCardEditor);
+define("charging-coordinator-card-editor", simpleEditor([TITLE_FIELD, PREFIX_FIELD], SLOTS));
 define("charging-coordinator-card", ChargingCoordinatorCard);
 registerCard(
   "charging-coordinator-card",

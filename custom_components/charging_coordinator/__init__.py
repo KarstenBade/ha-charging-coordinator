@@ -12,6 +12,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
@@ -25,7 +26,6 @@ PLATFORMS = [
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
-    Platform.TEXT,
 ]
 CARD_URL = f"/{DOMAIN}/charging-coordinator-card.js"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -63,6 +63,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ChargingCoordinatorConfi
         raise ConfigEntryNotReady(f"Cannot listen for SHM2 multicast: {err}") from err
 
     entry.runtime_data = runtime
+    # the "connected vehicle" text entity of 0.3.0 is now a sensor fed by the car templates
+    registry = er.async_get(hass)
+    if old := registry.async_get_entity_id("text", DOMAIN, f"{entry.entry_id}_connected_vehicle"):
+        registry.async_remove(old)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     return True

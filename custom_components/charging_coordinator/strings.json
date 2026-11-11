@@ -78,6 +78,62 @@
       "invalid_topic": "The topic must include the charger serial number, e.g. go-eCharger/123456."
     }
   },
+  "config_subentries": {
+    "vehicle": {
+      "entry_type": "Vehicle",
+      "initiate_flow": {
+        "user": "Add vehicle",
+        "reconfigure": "Reconfigure vehicle"
+      },
+      "step": {
+        "user": {
+          "title": "Add vehicle",
+          "data": {
+            "name": "Name",
+            "soc_entity": "State of charge",
+            "connected_template": "Connected",
+            "target_soc_entity": "Target state of charge (optional)",
+            "range_entity": "Range (optional)",
+            "image": "Image (optional)"
+          },
+          "data_description": {
+            "name": "Shown in the cards, e.g. ID.7.",
+            "soc_entity": "Sensor with the car's state of charge in %, e.g. from the Tibber integration.",
+            "connected_template": "Template that is true while this car is plugged in at home, e.g. {{ is_state('device_tracker.id_7', 'home') and is_state('binary_sensor.id_7_charging_cable', 'on') }}. If two cars are true at once, the one that turned true last counts as connected.",
+            "target_soc_entity": "The charge target set in the car, shown on the SoC bar.",
+            "range_entity": "Sensor with the remaining range.",
+            "image": "URL of a picture of the car, e.g. /local/cars/id7.png for a file in config/www/cars."
+          }
+        },
+        "reconfigure": {
+          "title": "Reconfigure vehicle",
+          "data": {
+            "name": "Name",
+            "soc_entity": "State of charge",
+            "connected_template": "Connected",
+            "target_soc_entity": "Target state of charge (optional)",
+            "range_entity": "Range (optional)",
+            "image": "Image (optional)"
+          },
+          "data_description": {
+            "name": "Shown in the cards, e.g. ID.7.",
+            "soc_entity": "Sensor with the car's state of charge in %, e.g. from the Tibber integration.",
+            "connected_template": "Template that is true while this car is plugged in at home, e.g. {{ is_state('device_tracker.id_7', 'home') and is_state('binary_sensor.id_7_charging_cable', 'on') }}. If two cars are true at once, the one that turned true last counts as connected.",
+            "target_soc_entity": "The charge target set in the car, shown on the SoC bar.",
+            "range_entity": "Sensor with the remaining range.",
+            "image": "URL of a picture of the car, e.g. /local/cars/id7.png for a file in config/www/cars."
+          }
+        }
+      },
+      "error": {
+        "name_required": "Enter a name for the car.",
+        "name_exists": "Another car already has this name."
+      },
+      "abort": {
+        "reconfigure_successful": "The vehicle was updated."
+      }
+    }
+  },
   "selector": {
     "charger_grid_phase": {
       "options": {
@@ -93,8 +149,7 @@
         "name": "Charge mode",
         "state": {
           "off": "Off",
-          "pv": "PV",
-          "pv_grid": "PV + grid",
+          "smart": "Smart",
           "now": "Now"
         }
       },
@@ -118,6 +173,12 @@
     "switch": {
       "active_control": {
         "name": "Active control"
+      },
+      "smart_pv": {
+        "name": "Smart: PV surplus"
+      },
+      "smart_price": {
+        "name": "Smart: cheap price"
       },
       "block_battery_on_ev_grid_charge": {
         "name": "Block battery on EV grid charging"
@@ -286,6 +347,9 @@
           "normal": "Normal",
           "hold": "Hold"
         }
+      },
+      "connected_vehicle": {
+        "name": "Connected vehicle"
       }
     },
     "binary_sensor": {
@@ -300,11 +364,9 @@
       },
       "vehicle_connected": {
         "name": "Vehicle connected"
-      }
-    },
-    "text": {
-      "connected_vehicle": {
-        "name": "Connected vehicle"
+      },
+      "car_connected": {
+        "name": "Connected"
       }
     }
   }

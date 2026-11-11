@@ -31,7 +31,7 @@ logger:
   logs:
     custom_components.charging_coordinator: debug
 
-# Price slider for testing: move it across price_threshold to test pv_grid
+# Price slider for testing: move it across price_threshold to test cheap price charging
 # and the battery hold. Select sensor.dev_electricity_price in the config flow.
 input_number:
   dev_electricity_price:

@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import ChargingCoordinatorConfigEntry
-from .core.models import ChargeMode, PhaseMode, UnbalanceMode
+from .core.models import LEGACY_CHARGE_MODES, ChargeMode, PhaseMode, UnbalanceMode
 from .entity import SettingEntity
 from .runtime import CoordinatorRuntime
 
@@ -49,8 +49,16 @@ class SettingSelect(SettingEntity, SelectEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
-        if last is not None and last.state in self.options:
+        if last is None:
+            return
+        if last.state in self.options:
             self.runtime.set_setting(self.entity_description.key, self._enum(last.state))
+        elif self._enum is ChargeMode and last.state in LEGACY_CHARGE_MODES:
+            # pv / pv_grid before 0.4.0 are smart mode with the matching sources
+            smart_pv, smart_price = LEGACY_CHARGE_MODES[last.state]
+            self.runtime.set_setting("charge_mode", ChargeMode.SMART)
+            self.runtime.set_setting("smart_pv", smart_pv)
+            self.runtime.set_setting("smart_price", smart_price)
 
     @property
     def current_option(self) -> str:

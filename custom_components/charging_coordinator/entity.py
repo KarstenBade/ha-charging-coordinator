@@ -56,4 +56,13 @@ class SettingEntity(CoordinatorEntity, RestoreEntity):
 
     @callback
     def _handle_update(self) -> None:
-        """Settings only change through the entity itself."""
+        """Settings mostly change through the entity itself; catch the rest (e.g. migrations)."""
+        value = self.setting()
+        if value != getattr(self, "_shown_value", value):
+            self.async_write_ha_state()
+        self._shown_value = value
+
+    @callback
+    def async_write_ha_state(self) -> None:
+        self._shown_value = self.setting()
+        super().async_write_ha_state()

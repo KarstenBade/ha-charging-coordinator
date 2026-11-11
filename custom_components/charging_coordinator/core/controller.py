@@ -96,7 +96,7 @@ class Controller:
         """Decide for this tick. `sync_from_charger` is True in active mode."""
         charger = m.charger
         cheap = is_price_cheap(m, s)
-        grid_cheap = s.charge_mode == ChargeMode.PV_GRID and cheap
+        grid_cheap = s.charge_mode == ChargeMode.SMART and s.smart_price and cheap
         grid_charging = s.charge_mode == ChargeMode.NOW or grid_cheap
         battery_mode, battery_reason = required_battery_mode(m, s, grid_charging)
 
@@ -169,6 +169,11 @@ class Controller:
             return replace(base, status="disconnected")
         if s.charge_mode == ChargeMode.OFF:
             return replace(base, status="off")
+        if s.charge_mode == ChargeMode.SMART and not s.smart_pv and not grid_cheap:
+            if not s.smart_price:
+                return replace(base, status="smart: no source enabled")
+            prefix = self._mode_prefix(m, s, cheap)
+            return replace(base, status=f"{prefix}: waiting for a cheap price")
         if sp is None:
             return replace(base, valid=False, status="waiting for grid meter data")
 
@@ -224,12 +229,12 @@ class Controller:
 
     @staticmethod
     def _mode_prefix(m: Measurements, s: Settings, cheap: bool) -> str:
-        if s.charge_mode != ChargeMode.PV_GRID:
+        if s.charge_mode != ChargeMode.SMART or not s.smart_price:
             return s.charge_mode.value
         if m.price is None:
-            return "pv_grid (price unknown)"
+            return "smart (price unknown)"
         op = "<=" if cheap else ">"
-        return f"pv_grid ({m.price:.3f} {op} {s.price_threshold:.3f})"
+        return f"smart ({m.price:.3f} {op} {s.price_threshold:.3f})"
 
     def _target_phases(
         self,

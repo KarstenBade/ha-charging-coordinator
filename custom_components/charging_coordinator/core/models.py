@@ -16,9 +16,12 @@ NOMINAL_VOLTAGE = 230.0
 
 class ChargeMode(StrEnum):
     OFF = "off"
-    PV = "pv"
-    PV_GRID = "pv_grid"
+    SMART = "smart"  # PV surplus and/or cheap grid power, see Settings.smart_*
     NOW = "now"
+
+
+# modes before 0.4.0, mapped to (smart_pv, smart_price) when a stored state is restored
+LEGACY_CHARGE_MODES: dict[str, tuple[bool, bool]] = {"pv": (True, False), "pv_grid": (True, True)}
 
 
 class PhaseMode(StrEnum):
@@ -50,7 +53,9 @@ class ChargerStatus(StrEnum):
 class Settings:
     """User settings, mostly backed by number/select/switch entities."""
 
-    charge_mode: ChargeMode = ChargeMode.PV
+    charge_mode: ChargeMode = ChargeMode.SMART
+    smart_pv: bool = True  # smart mode charges from PV surplus
+    smart_price: bool = False  # smart mode also charges from the grid at a cheap price
     phase_mode: PhaseMode = PhaseMode.AUTO
     unbalance_mode: UnbalanceMode = UnbalanceMode.STATIC
 

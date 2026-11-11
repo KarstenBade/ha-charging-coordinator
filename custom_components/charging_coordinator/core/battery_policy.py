@@ -16,7 +16,7 @@ def required_battery_mode(
     """Hold the battery while the EV charges from the grid or the price is cheap.
 
     `grid_charging` is true when the active mode intends to draw from the grid
-    (now, or pv_grid with a cheap price). Like evcc, the EV related hold only
+    (now, or smart with cheap price charging and a cheap price). Like evcc, the EV related hold only
     applies while the vehicle is actually charging.
     """
     if s.block_battery_on_cheap_price and is_price_cheap(m, s):

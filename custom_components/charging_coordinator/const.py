@@ -29,3 +29,13 @@ SMA_STALE_AFTER = 30.0
 # after startup or enabling active control: keep the battery as it is until the first
 # valid decision, at most this long (s)
 BATTERY_STARTUP_GRACE = 60.0
+
+# vehicles are config subentries of this type
+SUBENTRY_VEHICLE = "vehicle"
+CONF_VEHICLE_NAME = "name"
+CONF_VEHICLE_SOC = "soc_entity"
+CONF_VEHICLE_CONNECTED = "connected_template"
+CONF_VEHICLE_TARGET_SOC = "target_soc_entity"
+CONF_VEHICLE_RANGE = "range_entity"
+CONF_VEHICLE_IMAGE = "image"
+NO_VEHICLE = "none"

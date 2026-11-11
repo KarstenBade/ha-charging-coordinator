@@ -3,6 +3,7 @@ import {
   CHARGE_MODES,
   CoordinatorCard,
   PREFIX_FIELD,
+  SMART_SOURCES,
   TITLE_FIELD,
   baseStyles,
   define,
@@ -15,8 +16,9 @@ import {
 } from "./common";
 
 /**
- * Charging control: the charge mode and the price limit, plus max grid power while it
- * applies. `compact: true` shows the same controls in two rows without explanations.
+ * Charging control: off, smart or now. Smart shows its two sources, PV surplus and a
+ * cheap price, as switches; the price limit and max grid power only show while cheap
+ * price charging is on. `compact: true` shows the same controls without explanations.
  */
 interface ControlConfig extends BaseConfig {
   compact?: boolean;
@@ -25,6 +27,8 @@ interface ControlConfig extends BaseConfig {
 /** Every entity the card uses; each can be mapped in the card's `entities`. */
 const SLOTS: EntitySlot[] = [
   { key: "charge_mode", domain: "select", label: "Charge mode" },
+  { key: "smart_pv", domain: "switch", label: "Smart: PV surplus" },
+  { key: "smart_price", domain: "switch", label: "Smart: cheap price" },
   { key: "price_threshold", domain: "number", label: "Price limit" },
   { key: "price", domain: "sensor", label: "Current price" },
   { key: "grid_charge_max_power", domain: "number", label: "Max grid power" },
@@ -62,57 +66,89 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
     </ha-card>`;
   }
 
+  private sourceOn(key: string): boolean {
+    return this.entity("switch", key)?.state === "on";
+  }
+
+  private renderModeButtons(mode: string, compact: boolean): TemplateResult {
+    return html`<div class=${compact ? "segments" : "modes"} role="group" aria-label="Charge mode">
+      ${CHARGE_MODES.map((m) => {
+        const on = m.value === mode;
+        return html`<button
+          class=${compact ? "" : "mode"}
+          style="--accent: ${m.color}"
+          aria-pressed=${on ? "true" : "false"}
+          @click=${() => this.selectOption("charge_mode", m.value)}
+        >
+          <ha-icon .icon=${m.icon} style=${on ? `color: ${m.color}` : ""}></ha-icon>
+          <span>${m.label}</span>
+        </button>`;
+      })}
+    </div>`;
+  }
+
+  /** The sources of smart mode as switches; the whole row (or pill) is the control. */
+  private renderSources(compact: boolean): TemplateResult {
+    return html`<div class=${compact ? "tray" : "sources"}>
+      ${SMART_SOURCES.map((src) => {
+        const on = this.sourceOn(src.key);
+        return html`<button
+          class="source"
+          role="switch"
+          aria-checked=${on ? "true" : "false"}
+          style="--c: ${src.color}"
+          @click=${() => this.toggle(src.key, !on)}
+        >
+          <ha-icon .icon=${src.icon}></ha-icon>
+          ${compact
+            ? html`<span class="name">${src.label}</span>`
+            : html`<span class="text"><b>${src.label}</b><span>${src.description}</span></span>`}
+          <span class="knob" aria-hidden="true"></span>
+        </button>`;
+      })}
+    </div>`;
+  }
+
   // --- full -------------------------------------------------------------------
 
   private renderFull(mode: string): TemplateResult {
     const current = CHARGE_MODES.find((m) => m.value === mode);
+    const smart = mode === "smart";
+    const pricing = smart && this.sourceOn("smart_price");
+    const holdOnCheap = this.entity("switch", "block_battery_on_cheap_price")?.state === "on";
+    const idle = smart && !pricing && !this.sourceOn("smart_pv");
     return html`
-      <div class="modes" role="group" aria-label="Charge mode">
-        ${CHARGE_MODES.map((m) => {
-          const on = m.value === mode;
-          return html`<button
-            class="mode"
-            style="--accent: ${m.color}"
-            aria-pressed=${on ? "true" : "false"}
-            @click=${() => this.selectOption("charge_mode", m.value)}
-          >
-            <span class="glyph" style=${on ? `color: ${m.color}` : ""}>
-              ${m.icons.map((icon) => html`<ha-icon .icon=${icon}></ha-icon>`)}
-            </span>
-            <span>${m.label}</span>
-          </button>`;
-        })}
-      </div>
+      ${this.renderModeButtons(mode, false)}
       <p class="description">${current?.description ?? "Unknown mode."}</p>
-      ${this.renderLimit(mode)} ${mode === "pv_grid" ? this.renderGridMax() : nothing}
+      ${smart ? this.renderSources(false) : nothing}
+      ${idle ? html`<p class="hint warn">Switch on PV surplus or Cheap price, or the car won't charge.</p>` : nothing}
+      ${pricing || holdOnCheap ? this.renderLimit(pricing) : nothing}
+      ${pricing ? this.renderGridMax() : nothing}
     `;
   }
 
-  private renderLimit(mode: string): TemplateResult {
+  /** The price limit; it also applies to the battery hold at a cheap price. */
+  private renderLimit(pricing: boolean): TemplateResult {
     const limit = this.numberValue("price_threshold");
     const price = num(this.entity("sensor", "price"));
     const cheap = price !== undefined && limit !== undefined && price <= limit;
-    const holdOnCheap = this.entity("switch", "block_battery_on_cheap_price")?.state === "on";
 
     let note: string;
     if (price === undefined) {
       note = "No current price.";
-    } else if (mode === "pv_grid") {
+    } else if (pricing) {
       note = cheap
-        ? `Now ${formatPrice(price)}, at or below your limit: also charging from the grid.`
+        ? `Now ${formatPrice(price)}, at or below your limit: charging from the grid.`
         : `Now ${formatPrice(price)}, above your limit: grid charging waits.`;
     } else {
-      note = holdOnCheap
-        ? `Now ${formatPrice(price)}. The limit applies in PV + grid mode and to the battery hold.`
-        : `Now ${formatPrice(price)}. The limit only applies in PV + grid mode.`;
+      note = `Now ${formatPrice(price)}. The battery hold at a cheap price uses this limit.`;
     }
-    const applies = mode === "pv_grid" || holdOnCheap;
 
-    return html`<div class="section ${applies ? "" : "inactive"}">
+    return html`<div class="section">
       <div class="spread">
         <div>
           <div class="label">Price limit</div>
-          <div class="hint">Grid charging only at or below</div>
+          <div class="hint">${pricing ? "Grid charging only at or below" : "Battery hold at or below"}</div>
         </div>
         <div class="row">
           <span class="value">${formatPrice(limit)}</span>
@@ -122,7 +158,7 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
         </div>
       </div>
       ${limit === undefined ? nothing : this.renderRuler(limit, price)}
-      <div class="note ${cheap && mode === "pv_grid" ? "good" : ""}">${note}</div>
+      <div class="note ${cheap && pricing ? "good" : ""}">${note}</div>
     </div>`;
   }
 
@@ -169,37 +205,38 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
   // --- compact ----------------------------------------------------------------
 
   private renderCompact(mode: string): TemplateResult {
+    let rest: TemplateResult;
+    if (mode === "smart") {
+      const pricing = this.sourceOn("smart_price");
+      const idle = !pricing && !this.sourceOn("smart_pv");
+      rest = html`${this.renderSources(true)}
+        ${pricing ? this.renderCompactLimit() : nothing}
+        ${idle ? html`<p class="hint warn">Switch one on, or the car won't charge.</p>` : nothing}`;
+    } else {
+      rest = html`<p class="hint">
+        ${mode === "now" ? "Charging at full power from any source." : "Not charging."}
+      </p>`;
+    }
+    return html`${this.renderModeButtons(mode, true)}${rest}`;
+  }
+
+  private renderCompactLimit(): TemplateResult {
     const limit = this.numberValue("price_threshold");
     const price = num(this.entity("sensor", "price"));
     const cheap = price !== undefined && limit !== undefined && price <= limit;
-    return html`
-      <div class="segments" role="group" aria-label="Charge mode">
-        ${CHARGE_MODES.map((m) => {
-          const on = m.value === mode;
-          return html`<button
-            style="--accent: ${m.color}"
-            aria-pressed=${on ? "true" : "false"}
-            @click=${() => this.selectOption("charge_mode", m.value)}
-          >
-            <ha-icon .icon=${m.icon} style=${on ? `color: ${m.color}` : ""}></ha-icon>
-            <span>${m.label}</span>
-          </button>`;
-        })}
-      </div>
-      <div class="compact-limit">
-        <span class="label">Price limit</span>
-        <span class="value">${formatPrice(limit)}</span>
-        ${this.renderStepper("Price limit", (d) =>
-          limit === undefined ? undefined : this.setNumber("price_threshold", round3(limit + d * LIMIT_STEP)),
-        )}
-        ${price === undefined
-          ? nothing
-          : html`<span class="pill ${cheap ? "good" : ""}" title="Current price">
-              <ha-icon .icon=${cheap ? "mdi:cash-check" : "mdi:cash"}></ha-icon>now
-              ${formatPrice(price)}
-            </span>`}
-      </div>
-    `;
+    return html`<div class="compact-limit">
+      <span class="label">Price limit</span>
+      <span class="value">${formatPrice(limit)}</span>
+      ${this.renderStepper("Price limit", (d) =>
+        limit === undefined ? undefined : this.setNumber("price_threshold", round3(limit + d * LIMIT_STEP)),
+      )}
+      ${price === undefined
+        ? nothing
+        : html`<span class="pill ${cheap ? "good" : ""}" title="Current price">
+            <ha-icon .icon=${cheap ? "mdi:cash-check" : "mdi:cash"}></ha-icon>now
+            ${formatPrice(price)}
+          </span>`}
+    </div>`;
   }
 
   static styles = [
@@ -207,7 +244,7 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
     css`
       .modes {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 6px;
       }
       .mode {
@@ -227,9 +264,8 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
         font-size: 0.86rem;
         white-space: nowrap;
       }
-      .mode .glyph {
-        display: flex;
-        gap: 2px;
+      .mode ha-icon {
+        --mdc-icon-size: 22px;
       }
       .mode[aria-pressed="true"] {
         color: var(--primary-text-color);
@@ -238,12 +274,115 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
       }
       .description {
         margin: 10px 2px 0;
-        min-height: 2.6em;
         font-size: 0.9rem;
       }
-      .section.inactive .ruler,
-      .section.inactive .value {
-        opacity: 0.55;
+      .hint.warn {
+        margin: 10px 2px 0;
+        color: var(--warning-color, #ffa600);
+      }
+      p.hint {
+        margin: 10px 2px 0;
+      }
+
+      /* smart sources: rows in the full card, pills in the compact one */
+      .source {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        border: 1px solid transparent;
+        background: none;
+        color: var(--secondary-text-color);
+        text-align: left;
+      }
+      .source[aria-checked="true"] {
+        color: var(--primary-text-color);
+      }
+      .source[aria-checked="true"] > ha-icon {
+        color: var(--c);
+      }
+      .knob {
+        position: relative;
+        flex: none;
+        width: 34px;
+        height: 20px;
+        margin-left: auto;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--secondary-text-color) 45%, var(--card-background-color, #fff));
+      }
+      .knob::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--card-background-color, #fff);
+        transition: left 0.15s;
+      }
+      .source[aria-checked="true"] .knob {
+        background: var(--c);
+      }
+      .source[aria-checked="true"] .knob::after {
+        left: 17px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .knob::after {
+          transition: none;
+        }
+      }
+      .sources {
+        margin-top: 12px;
+        border-top: 1px solid var(--divider-color);
+      }
+      .sources .source {
+        width: 100%;
+        padding: 10px 2px;
+        border-radius: 0;
+      }
+      .sources .source + .source {
+        border-top: 1px solid var(--divider-color);
+      }
+      .sources .text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .sources .text b {
+        font-weight: 500;
+      }
+      .sources .text span {
+        font-size: 0.84rem;
+        color: var(--secondary-text-color);
+      }
+      .tray {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .tray .source {
+        gap: 8px;
+        padding: 6px 8px 6px 10px;
+        border-color: var(--divider-color);
+        border-radius: 12px;
+        background: var(--secondary-background-color, transparent);
+      }
+      .tray .source[aria-checked="true"] {
+        border-color: color-mix(in srgb, var(--c) 55%, transparent);
+        background: color-mix(in srgb, var(--c) 12%, var(--card-background-color, #fff));
+      }
+      .tray .name {
+        overflow: hidden;
+        font-weight: 500;
+        font-size: 0.86rem;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .tray ha-icon {
+        --mdc-icon-size: 18px;
+        flex: none;
       }
       .ruler {
         position: relative;
@@ -309,7 +448,7 @@ class ChargingCoordinatorControlCard extends CoordinatorCard<ControlConfig> {
 
       .segments {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         border: 1px solid var(--divider-color);
         border-radius: 18px;
         overflow: hidden;
@@ -379,7 +518,7 @@ define(
   "charging-coordinator-control-card-editor",
   simpleEditor([
     TITLE_FIELD,
-    { name: "compact", label: "Compact (two rows, no explanations)", selector: { boolean: {} } },
+    { name: "compact", label: "Compact (no explanations)", selector: { boolean: {} } },
     PREFIX_FIELD,
   ], SLOTS),
 );
@@ -387,5 +526,5 @@ define("charging-coordinator-control-card", ChargingCoordinatorControlCard);
 registerCard(
   "charging-coordinator-control-card",
   "Charging Coordinator control",
-  "Charge mode and price limit, optionally compact",
+  "Charge mode, smart mode sources and price limit, optionally compact",
 );

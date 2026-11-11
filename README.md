@@ -15,16 +15,24 @@ The control logic follows evcc's proven algorithms (surplus calculation, enable/
 | Charge mode | Behavior |
 |---|---|
 | `off` | Charger disabled |
-| `pv` | Surplus charging with enable/disable delays and automatic 1p/3p switching |
-| `pv_grid` | Like `pv`. When price ≤ threshold, also charges from the grid; total grid import is capped at `grid_charge_max_power` |
+| `smart` | Charges from the sources switched on below |
 | `now` | Maximum current (3p in auto phase mode) |
+
+Smart mode has two switches, and any combination works:
+
+| Switch | When on |
+|---|---|
+| `smart_pv` (*PV surplus*) | Surplus charging with enable/disable delays and automatic 1p/3p switching |
+| `smart_price` (*Cheap price*) | While price ≤ threshold, also charges from the grid; total grid import is capped at `grid_charge_max_power`. With PV surplus off, the car only charges at a cheap price |
+
+With both off, smart mode doesn't charge. The modes `pv` and `pv_grid` of 0.3.0 and earlier are migrated on the first start: `pv` becomes smart with PV surplus, `pv_grid` smart with both switches on. Automations that set `pv` or `pv_grid` need to set `smart` and the switches instead.
 
 - **Home battery priority (evcc model):**
   - `priority_soc`: below it, PV charges the battery first.
   - `buffer_soc`: above it, the battery may keep a running session at minimum current.
   - `buffer_start_soc`: above it, the battery may start a session at minimum current.
 - **Battery discharge block (hold), via SMA Modbus registers 40236/40793–40801 with a 30 s keep-alive:**
-  - While the EV charges from the grid (`now`, or `pv_grid` with a cheap price). Switch `block_battery_on_ev_grid_charge`.
+  - While the EV charges from the grid (`now`, or smart with *Cheap price* on and a cheap price). Switch `block_battery_on_ev_grid_charge`.
   - Optionally whenever price ≤ threshold, even without an EV. Switch `block_battery_on_cheap_price`.
 - **Phase switching:** `auto` / `1p` / `3p`, with configurable switch-up and switch-down power. Unbalanced-load limits only cap the 1p current; they never trigger a switch.
 - **Protection:**
@@ -65,16 +73,40 @@ Then restart HA and add *Charging Coordinator* under *Settings → Devices & ser
 
 For fixed time-of-use tariffs, create a template sensor that outputs the current price.
 
+### Vehicles
+
+The go-e can't tell cars apart, so each car gets a template that says when it is plugged in at home. Add a car on the integration's page with **Add vehicle** (needs Home Assistant 2025.3 or newer):
+
+| Field | Meaning |
+|---|---|
+| Name | Shown in the cards, e.g. `ID.7` |
+| State of charge | SoC sensor of the car, e.g. from the Tibber integration |
+| Connected | Template that is true while the car is plugged in at home |
+| Target state of charge | Optional, the charge target set in the car; shown on the SoC bar |
+| Range | Optional range sensor |
+| Image | Optional picture URL, e.g. `/local/cars/id7.png` for `config/www/cars/id7.png` |
+
+For example, with a device tracker and a cable sensor:
+
+```jinja
+{{ is_state('device_tracker.id_7', 'home')
+   and is_state('binary_sensor.id_7_charging_cable', 'on') }}
+```
+
+Test the template in *Developer tools → Template* first. To change a car later, open its ⋮ menu and choose *Reconfigure*.
+
+Each car gets its own device with `binary_sensor.charging_coordinator_<name>_connected`, the template's result. `sensor.charging_coordinator_connected_vehicle` names the car on the cable, or `none`. It only names a car while the charger reports a cable. If two templates are true at once, for example because the car API is slow to report an unplug, the car whose template turned true last wins. This survives restarts. The sensor's `vehicles` attribute lists all cars with their entities; the cards read the cars from it.
+
 ## The cards
 
 ### Overview
 
 `custom:charging-coordinator-card` shows everything relevant at one glance:
 
-- **Top:** charge mode and phase mode as chips. Tap one to change it in a small menu. On the right, whether the coordinator is **Active** or in **Shadow** mode.
+- **Top:** charge mode (with the smart mode sources, e.g. *Smart · PV + price*) and phase mode as chips. Tap one to change it in a small menu. On the right, whether the coordinator is **Active** or in **Shadow** mode.
 - **Headline:** what is happening, e.g. *Charging · 10.6 kW* with *3p · 16 A*, *Paused* with the reason, or *No vehicle connected*.
 - **Energy flow**, left to right, drawn as pipes whose width is power. The house rail runs along the bottom: the grid feeds it from the left and it feeds the charger on the right. PV comes down into it, home rises out of it, and the home battery sits above it between them. PV charges the battery directly (the hybrid inverter does that on its DC side, so it never reaches the house); only charging beyond the hybrid inverter's own PV, e.g. from the grid, comes from the rail, and discharging feeds into the rail. Export forks off the PV pipe down to the grid. Colors fade into the rail's grey where the sources meet, because the meter can't tell which source feeds which consumer. Dots move in the direction of flow, faster with more power (no dots with reduced motion enabled). The battery fills up with its SoC; it is grey while idle and orange with *hold* while it is held.
-- **Cars:** the plugged-in car is shown under the charger with its SoC, and the other configured cars are in the bottom row. The go-e can't tell cars apart, so tap the plugged-in car in the bottom row (the charger asks *Which car?*). Your choice is stored in `text.charging_coordinator_connected_vehicle` and cleared when the car is unplugged. With only one car configured, nothing needs to be picked.
+- **Cars:** the car named by `sensor.charging_coordinator_connected_vehicle` is shown under the charger with its SoC, and the other cars are in the bottom row. Cars are set up in the integration, see [Vehicles](#vehicles).
 - **Bottom row:** the cars not at the charger, the next action with its timer (*Starts in 35 s*, *Stops in 2:40 min*, *3 phases in 42 s*), price against threshold, and reasons: why the battery holds, and why charging is limited or blocked.
 
 Configure it in the card editor or in YAML:
@@ -82,18 +114,25 @@ Configure it in the card editor or in YAML:
 ```yaml
 type: custom:charging-coordinator-card
 title: Wallbox            # optional
-vehicles:                 # optional, SoC sensors e.g. from Tibber
-  - name: ID.3
-    soc: sensor.id_3_battery_level
-  - name: ID.7
-    soc: sensor.id_7_battery_level
 ```
 
-All parameters are on the dashboard's *Settings* view; the card only changes the charge mode, the phase mode and the plugged-in car.
+The `vehicles:` option of 0.3.0 and earlier is gone; set the cars up in the integration instead. All parameters are on the dashboard's *Settings* view; the card only changes the charge mode and the phase mode.
 
 ### Charging control
 
-`custom:charging-coordinator-control-card`: the four charge modes, each with a sentence on what it does, and the price limit on a scale next to the current price ("above your limit: grid charging waits"). Max grid power appears only in *PV + grid*, the one mode it affects. With `compact: true` it shows the same controls in two rows without explanations, for phones.
+`custom:charging-coordinator-control-card`: *Off*, *Smart* and *Now*, with a sentence on what the chosen mode does. In *Smart*, the switches *PV surplus* and *Cheap price* appear. The price limit, on a scale next to the current price ("above your limit: grid charging waits"), and max grid power appear only while *Cheap price* is on. The full card also shows the limit while *Hold battery on cheap price* is on, because that hold uses it too. With `compact: true` it shows the same controls without explanations, for phones.
+
+### Vehicles
+
+`custom:charging-coordinator-vehicle-card`: every car set up in the integration with its picture, SoC, target (the orange tick), range, and whether it is plugged in or charging. Each car follows its own template, so if two cars report a cable at once, both show as connected; that makes double reports easy to spot. Without a cable at the charger, no car shows as connected. Three layouts, chosen with `layout` or in the card editor:
+
+| `layout` | Looks like |
+|---|---|
+| `tiles` (default) | One tile per car, the connected one outlined green |
+| `rows` | One compact row per car, a green dot marks the connected one |
+| `spotlight` | The connected car large, the others as one line each |
+
+It stacks well above the compact control card.
 
 ### Battery and car
 
@@ -101,7 +140,7 @@ All parameters are on the dashboard's *Settings* view; the card only changes the
 
 ### Prices
 
-`custom:charging-coordinator-price-card`: prices as bars with the limit as a line. Bars at or below the limit, where *PV + grid* also charges from the grid, are green, and the summary says when the next such stretch starts and how long it lasts. Tap a bar to use its price as the limit. The forecast is read from your price sensor's attributes; common formats work without configuration (Nord Pool `raw_today`/`raw_tomorrow` or `today`/`tomorrow`, ENTSO-e `prices`, EPEX Spot `data`, lists of `{start, value}`/`{startsAt, total}`). Without a forecast, the card shows today's recorded prices so far.
+`custom:charging-coordinator-price-card`: prices as bars with the limit as a line. Bars at or below the limit, where *Cheap price* charging draws from the grid, are green, and the summary says when the next such stretch starts and how long it lasts. Tap a bar to use its price as the limit. The forecast is read from your price sensor's attributes; common formats work without configuration (Nord Pool `raw_today`/`raw_tomorrow` or `today`/`tomorrow`, ENTSO-e `prices`, EPEX Spot `data`, lists of `{start, value}`/`{startsAt, total}`). Without a forecast, the card shows today's recorded prices so far.
 
 ### Options for all cards
 
@@ -118,7 +157,7 @@ entities:
   price: sensor.electricity_price
 ```
 
-Services are called for the mapped entity's own type, so helpers (`input_select`, `input_number`, `input_boolean`, `input_text`) work wherever the card changes something. Power sensors in kW or MW are converted to W. Signs must follow the coordinator's convention: grid power is positive for import, battery power positive for discharge. For the price card, `price_forecast` names the sensor whose attributes hold the forecast; by default it is the coordinator price sensor's `source`.
+Services are called for the mapped entity's own type, so helpers (`input_select`, `input_number`, `input_boolean`) work wherever the card changes something. Power sensors in kW or MW are converted to W. Signs must follow the coordinator's convention: grid power is positive for import, battery power positive for discharge. For the price card, `price_forecast` names the sensor whose attributes hold the forecast; by default it is the coordinator price sensor's `source`.
 
 ## Rollout
 
@@ -150,7 +189,7 @@ Each tick, the following steps run:
    - go-e: `amp`, `psm`, `frc` over MQTT `…/set`.
    - Battery: mode over Modbus.
 
-**Changes made in the go-e app** (start/stop, phases) are adopted in active mode, as evcc does, once the coordinator's own last `frc`/`psm` write is more than 60 s old. The normal logic then decides from the new state: in `pv`, a stopped session restarts only after the enable delay if there is surplus. An app phase change stays in `auto` until the phase timer decides otherwise, and is switched back right away if the phase mode is fixed. In shadow mode the coordinator keeps its own decisions and never reads them back. Switching `active_control` on adopts the charger's current state first.
+**Changes made in the go-e app** (start/stop, phases) are adopted in active mode, as evcc does, once the coordinator's own last `frc`/`psm` write is more than 60 s old. The normal logic then decides from the new state: in smart mode with PV surplus, a stopped session restarts only after the enable delay if there is surplus. An app phase change stays in `auto` until the phase timer decides otherwise, and is switched back right away if the phase mode is fixed. In shadow mode the coordinator keeps its own decisions and never reads them back. Switching `active_control` on adopts the charger's current state first.
 
 `sensor.charging_coordinator_status` explains every decision, for example `pv: enabling in 42 s` or `now: 3p max power, limited by main fuse L2`.
 
@@ -189,7 +228,7 @@ scripts/dev-run.sh              # http://localhost:8123
 
 In VS Code, start **Home Assistant (dev)** from *Run and Debug* to get breakpoints anywhere, including HA itself (`justMyCode` is off). **Home Assistant (dev, asyncio debug)** adds HA's `--debug` mode, which reports blocking calls in the event loop. After a code change, restart HA; the symlink means no copying. A restart from the HA UI makes HA exit with code 100. `scripts/dev-run.sh` starts it again; a VS Code debug session ends instead, so start it again with F5.
 
-Only `dev-config/configuration.yaml` is tracked. It loads a small subset of `default_config`, enables debug logging for the integration, and adds a price slider (`input_number.dev_electricity_price` → `sensor.dev_electricity_price`). Drag the slider across `price_threshold` to test `pv_grid` and the battery hold. The sidebar entry *Charging (example)* shows [examples/dashboard.yaml](examples/dashboard.yaml) straight from the repo (through a symlink), so edits there show after a browser reload.
+Only `dev-config/configuration.yaml` is tracked. It loads a small subset of `default_config`, enables debug logging for the integration, and adds a price slider (`input_number.dev_electricity_price` → `sensor.dev_electricity_price`). Drag the slider across `price_threshold` to test cheap price charging and the battery hold. The sidebar entry *Charging (example)* shows [examples/dashboard.yaml](examples/dashboard.yaml) straight from the repo (through a symlink), so edits there show after a browser reload.
 
 Connecting to the hardware:
 
