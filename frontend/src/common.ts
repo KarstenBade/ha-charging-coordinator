@@ -169,16 +169,13 @@ interface VehicleAttribute {
   target_soc_entity?: string | null;
   range_entity?: string | null;
   image_entity?: string | null;
-  image?: string | null; // picture URL of cars set up with 0.4.0
+  image?: string | null; // picture URL, used without an image entity
 }
 
-/** The car's picture: its image entity's (the URL carries a rotating token) or a URL. */
+/** The car's picture: its image entity's (the URL carries a rotating token), else the URL. */
 function picture(hass: Hass, v: VehicleAttribute): string | undefined {
-  if (v.image_entity) {
-    const url = hass.states[v.image_entity]?.attributes.entity_picture;
-    return typeof url === "string" && url ? url : undefined;
-  }
-  return v.image || undefined;
+  const url = v.image_entity ? hass.states[v.image_entity]?.attributes.entity_picture : undefined;
+  return typeof url === "string" && url ? url : v.image || undefined;
 }
 
 /** The cars listed in the integration's connected vehicle sensor. */

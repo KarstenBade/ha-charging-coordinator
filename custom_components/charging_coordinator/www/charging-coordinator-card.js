@@ -632,12 +632,9 @@ function L(n) {
   return n === void 0 ? "–" : n.toFixed(3);
 }
 function Lr(n, e) {
-  var t;
-  if (e.image_entity) {
-    const r = (t = n.states[e.image_entity]) == null ? void 0 : t.attributes.entity_picture;
-    return typeof r == "string" && r ? r : void 0;
-  }
-  return e.image || void 0;
+  var r;
+  const t = e.image_entity ? (r = n.states[e.image_entity]) == null ? void 0 : r.attributes.entity_picture : void 0;
+  return typeof t == "string" && t ? t : e.image || void 0;
 }
 function Zt(n, e) {
   const t = e == null ? void 0 : e.attributes.vehicles;

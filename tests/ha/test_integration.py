@@ -236,7 +236,7 @@ async def setup_with_vehicles(hass: HomeAssistant) -> MockConfigEntry:
         data=CONFIG,
         unique_id=DOMAIN,
         subentries_data=[
-            # a picture URL as set up with 0.4.0, and an image entity
+            # a picture URL, and an image entity
             vehicle("sub3", "ID.3", "id3", {"image": "/local/id3.png"}),
             vehicle("sub7", "ID.7", "id7", {"image_entity": "image.id7"}),
         ],
@@ -361,7 +361,7 @@ async def test_vehicle_subentry_flow(
     result = await hass.config_entries.subentries.async_configure(result["flow_id"], user_input)
     assert result["errors"] == {"name": "name_exists"}
 
-    user_input |= {"name": " e-up! "}
+    user_input |= {"name": " e-up! ", "image": " "}
     result = await hass.config_entries.subentries.async_configure(result["flow_id"], user_input)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()

@@ -38,5 +38,5 @@ CONF_VEHICLE_CONNECTED = "connected_template"
 CONF_VEHICLE_TARGET_SOC = "target_soc_entity"
 CONF_VEHICLE_RANGE = "range_entity"
 CONF_VEHICLE_IMAGE_ENTITY = "image_entity"
-CONF_VEHICLE_IMAGE = "image"  # picture URL of 0.4.0, still shown until reconfigured
+CONF_VEHICLE_IMAGE = "image"  # picture URL, used without an image entity
 NO_VEHICLE = "none"

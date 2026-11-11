@@ -30,6 +30,7 @@ from .const import (
     CONF_SHM2_INTERFACE,
     CONF_SHM2_SERIAL,
     CONF_VEHICLE_CONNECTED,
+    CONF_VEHICLE_IMAGE,
     CONF_VEHICLE_IMAGE_ENTITY,
     CONF_VEHICLE_NAME,
     CONF_VEHICLE_RANGE,
@@ -201,6 +202,7 @@ def _vehicle_schema(defaults: dict[str, Any]) -> vol.Schema:
             req(CONF_VEHICLE_CONNECTED): selector.TemplateSelector(),
             opt(CONF_VEHICLE_TARGET_SOC): entity("sensor", "number", "input_number"),
             opt(CONF_VEHICLE_RANGE): entity("sensor"),
+            opt(CONF_VEHICLE_IMAGE): selector.TextSelector(),
             opt(CONF_VEHICLE_IMAGE_ENTITY): entity("image", "camera"),
         }
     )

@@ -45,7 +45,7 @@ class VehicleConfig:
     target_soc_entity: str | None = None
     range_entity: str | None = None
     image_entity: str | None = None
-    image: str | None = None  # picture URL, only set up before image entities
+    image: str | None = None  # picture URL, e.g. /api/image/serve/<id>/512x512
 
     @classmethod
     def from_subentry(cls, subentry: ConfigSubentry) -> VehicleConfig:
@@ -121,11 +121,12 @@ class VehicleTracker:
             self.connected_since = since
 
     def picture(self) -> str | None:
-        """The picture of the image entity (its URL carries a rotating token), or the URL."""
+        """The image entity's picture (its URL carries a rotating token), else the URL."""
         if self.config.image_entity:
             state = self.hass.states.get(self.config.image_entity)
             picture = state.attributes.get("entity_picture") if state else None
-            return str(picture) if picture else None
+            if picture:
+                return str(picture)
         return self.config.image
 
     def as_dict(self) -> dict[str, Any]:
