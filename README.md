@@ -100,6 +100,8 @@ Each car gets its own device with `binary_sensor.charging_coordinator_<name>_con
 
 ## The cards
 
+The integration serves the cards itself and adds them to the dashboard resources (*Settings → Dashboards → Resources*) on every start, with a version tag that changes when the file does, so the browser fetches a new copy after an update. Don't add the file there by hand; an entry that already points to it is reused. Only when the resources are managed in YAML is the card loaded as an extra module instead.
+
 ### Overview
 
 `custom:charging-coordinator-card` shows everything relevant at one glance:

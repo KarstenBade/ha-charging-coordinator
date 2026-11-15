@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from homeassistant.components import mqtt
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -16,6 +14,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
+from .frontend import async_register_card
 from .runtime import CoordinatorRuntime
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,27 +26,13 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.SWITCH,
 ]
-CARD_URL = f"/{DOMAIN}/charging-coordinator-card.js"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 type ChargingCoordinatorConfigEntry = ConfigEntry[CoordinatorRuntime]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Serve the Lovelace card bundled with the integration."""
-    card = Path(__file__).parent / "www" / "charging-coordinator-card.js"
-    if not card.exists() or hass.http is None:
-        return True
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(CARD_URL, str(card), cache_headers=False)]
-    )
-    if "frontend" in hass.config.components:
-        from homeassistant.components.frontend import add_extra_js_url
-
-        # the mtime query string makes browsers fetch a new bundle after updates
-        add_extra_js_url(hass, f"{CARD_URL}?v={int(card.stat().st_mtime)}")
-    else:
-        _LOGGER.debug("Frontend not loaded, card not registered")
+    await async_register_card(hass)
     return True
 
 

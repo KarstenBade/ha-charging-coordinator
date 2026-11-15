@@ -10,6 +10,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, State
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_mqtt_message,
@@ -18,6 +19,7 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.charging_coordinator.const import DOMAIN
 from custom_components.charging_coordinator.devices.shm2_speedwire import MeterSample
+from custom_components.charging_coordinator.frontend import CARD_URL
 from custom_components.charging_coordinator.vehicles import (
     IMAGE_UPLOAD_MEDIA,
     media_value,
@@ -410,3 +412,18 @@ def test_picture_urls() -> None:
     assert picture_url("media-source://media_source/local/id7.png") is None
     assert picture_url("/local/id7.png") == "/local/id7.png"
     assert media_value("/local/id7.png") is None
+
+
+async def test_card_is_a_dashboard_resource(
+    hass: HomeAssistant, mqtt_mock: MagicMock, mock_devices: dict[str, AsyncMock]
+) -> None:
+    """The frontend waits for resources before drawing a dashboard, not for extra modules."""
+    assert await async_setup_component(hass, "lovelace", {})
+    resources = hass.data["lovelace"].resources
+    # a resource added by hand for the same file is reused, not duplicated
+    await resources.async_create_item({"res_type": "module", "url": CARD_URL})
+    await setup(hass)
+
+    ours = [r for r in resources.async_items() if r["url"].startswith(CARD_URL)]
+    assert len(ours) == 1 and ours[0]["type"] == "module"
+    assert ours[0]["url"].startswith(f"{CARD_URL}?v=")
