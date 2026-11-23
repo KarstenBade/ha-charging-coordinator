@@ -232,9 +232,17 @@ class ChargingCoordinatorVehicleCard extends CoordinatorCard<VehicleCardConfig> 
   static styles = [
     baseStyles,
     css`
+      /* green only while energy flows; blue for a car that is plugged in and waiting */
       :host {
         --target: var(--warning-color, #ff9800);
         --ev: var(--success-color, #43a047);
+        --plugged: var(--info-color, #039be5);
+      }
+      .charging {
+        --state: var(--ev);
+      }
+      .plugged {
+        --state: var(--plugged);
       }
       ha-card {
         display: block;
@@ -282,11 +290,9 @@ class ChargingCoordinatorVehicleCard extends CoordinatorCard<VehicleCardConfig> 
         --mdc-icon-size: 16px;
         flex: none;
       }
-      .status.charging {
-        color: var(--ev);
-      }
+      .status.charging,
       .status.plugged {
-        color: var(--primary-text-color);
+        color: var(--state);
       }
 
       /* picture: the car's own image, or an icon in its place */
@@ -337,8 +343,8 @@ class ChargingCoordinatorVehicleCard extends CoordinatorCard<VehicleCardConfig> 
         background: var(--secondary-background-color, transparent);
       }
       .tile:not(.off) {
-        border-color: color-mix(in srgb, var(--ev) 70%, transparent);
-        background: color-mix(in srgb, var(--ev) 8%, var(--secondary-background-color, transparent));
+        border-color: color-mix(in srgb, var(--state) 70%, transparent);
+        background: color-mix(in srgb, var(--state) 8%, var(--secondary-background-color, transparent));
       }
       .tile .pic {
         height: 84px;
@@ -400,7 +406,7 @@ class ChargingCoordinatorVehicleCard extends CoordinatorCard<VehicleCardConfig> 
         height: 7px;
         margin-left: 7px;
         border-radius: 50%;
-        background: var(--ev);
+        background: var(--state);
         vertical-align: 2px;
       }
       .gauge {
